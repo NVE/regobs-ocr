@@ -1,0 +1,34 @@
+{
+    "layers": [
+        {
+            "thickness": 15,
+            "hardness": "P",
+            "grain": "RG",
+            "size": [0.1, 0.3],
+            "lwc": "D"
+        },
+        {
+            "thickness": 3,
+            "hardness": "4F-1F",
+            "grain": "RG",
+            "size": 0.7,
+            "lwc": "D"
+        },
+        {
+            "thickness": 28,
+            "hardness": "P",
+            "grain": "RG",
+            "size": [0.1, 0.3],
+            "lwc": "D"
+        },
+        {
+            "thickness": 40,
+            "hardness": "K-",
+            "grain": "RG",
+            "size": 0.1,
+            "lwc": "D"
+        }
+    ],
+    "airTemp": -10,
+    "snowTemp": null
+}
