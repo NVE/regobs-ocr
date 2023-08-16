@@ -1,0 +1,27 @@
+{
+    "layers": [
+        {
+            "thickness": 10,
+            "hardness": "1F",
+            "grain": "RG",
+            "size": null,
+            "lwc": "D-M"
+        },
+        {
+            "thickness": 2,
+            "hardness": "K",
+            "grain": "MFcr",
+            "size": null,
+            "lwc": null
+        },
+        {
+            "thickness": 60,
+            "hardness": "1F",
+            "grain": "RG",
+            "size": null,
+            "lwc": "D-M"
+        }
+    ],
+    "airTemp": null,
+    "snowTemp": null
+}
