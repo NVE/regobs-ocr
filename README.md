@@ -134,11 +134,14 @@ The observer may choose to specify a primary and secondary grain. The secondary 
 
 Must be a number greater than 0 with at most 1 decimal place. Decimal separator is a comma.
 
+A range may be specified by stating the minimum size followed by the maximum separated by a hyphen.
+
 #### Examples
 
 * 1
 * 12,5
 * 0,5
+* 0,1-0,3
 
 ### Air temperature
 
