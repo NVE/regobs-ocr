@@ -1,0 +1,27 @@
+{
+    "layers": [
+        {
+            "thickness": 3,
+            "hardness": "4F",
+            "grain": "MF",
+            "size": null,
+            "lwc": "W-V"
+        },
+        {
+            "thickness": 47,
+            "hardness": "K",
+            "grain": "MFpc",
+            "size": null,
+            "lwc": "W"
+        }
+    ],
+    "airTemp": 0.4,
+    "snowTemp": [
+        {"depth": 1, "temp": -0.1},
+        {"depth": 10, "temp": -0.1},
+        {"depth": 20, "temp": -0.1},
+        {"depth": 30, "temp": -0.1},
+        {"depth": 40, "temp": -0.1},
+        {"depth": 48, "temp": -0.1}
+    ]
+}

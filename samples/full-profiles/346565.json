@@ -1,0 +1,35 @@
+{
+    "layers": [
+        {
+            "thickness": 12,
+            "hardness": "1F-/1F+",
+            "grain": "RG",
+            "size": null,
+            "lwc": "D"
+        },
+        {
+            "thickness": 3,
+            "hardness": "P",
+            "grain": "MFcr",
+            "size": null,
+            "lwc": null
+        },
+        {
+            "thickness": 45,
+            "hardness": "1F",
+            "grain": "",
+            "size": null,
+            "lwc": "W"
+        }
+    ],
+    "airTemp": -5,
+    "snowTemp": [
+        {"depth": 0, "temp": -1.4},
+        {"depth": 10, "temp": -0.8},
+        {"depth": 20, "temp": 0},
+        {"depth": 30, "temp": 0},
+        {"depth": 40, "temp": 0},
+        {"depth": 50, "temp": 0},
+        {"depth": 60, "temp": 0}
+    ]
+}
