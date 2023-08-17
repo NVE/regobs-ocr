@@ -1,0 +1,74 @@
+{
+    "layers": [
+        {
+            "thickness": 10,
+            "hardness": "K",
+            "grain": "MFcr",
+            "size": 3,
+            "lwc": "D"
+        },
+        {
+            "thickness": 2,
+            "hardness": "K",
+            "grain": "IF",
+            "size": 1.5,
+            "lwc": "D"
+        },
+        {
+            "thickness": 5,
+            "hardness": "P",
+            "grain": "MF",
+            "size": 2,
+            "lwc": "D"
+        },
+        {
+            "thickness": 2,
+            "hardness": "K",
+            "grain": "IF",
+            "size": 1.5,
+            "lwc": "D"
+        },
+        {
+            "thickness": 20,
+            "hardness": "P/1F",
+            "grain": "MF(RG)",
+            "size": 2,
+            "lwc": "D"
+        },
+        {
+            "thickness": 2,
+            "hardness": "K",
+            "grain": "IF",
+            "size": 1,
+            "lwc": "D"
+        },
+        {
+            "thickness": 35,
+            "hardness": "4F",
+            "grain": "FC",
+            "size": 2.5,
+            "lwc": "D"
+        },
+        {
+            "thickness": 30,
+            "hardness": "4F",
+            "grain": "FC",
+            "size": 3.5,
+            "lwc": "D"
+        }
+    ],
+    "airTemp": 2.1,
+    "snowTemp": [
+        {"depth": 0, "temp": -0.5},
+        {"depth": 10, "temp": -2.1},
+        {"depth": 20, "temp": -2.2},
+        {"depth": 30, "temp": -1.4},
+        {"depth": 40, "temp": -1.0},
+        {"depth": 50, "temp": -0.7},
+        {"depth": 60, "temp": -0.6},
+        {"depth": 70, "temp": -0.6},
+        {"depth": 80, "temp": -0.6},
+        {"depth": 90, "temp": -0.6},
+        {"depth": 100, "temp": -0.7}
+    ]
+}

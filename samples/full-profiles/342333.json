@@ -1,0 +1,23 @@
+{
+    "layers": [
+        {
+            "thickness": 105,
+            "hardness": "K",
+            "grain": "IF",
+            "size": null,
+            "lwc": null
+        }
+    ],
+    "airTemp": 0,
+    "snowTemp": [
+        {"depth": 1, "temp": -2.5},
+        {"depth": 10, "temp": -2.7},
+        {"depth": 20, "temp": -2.2},
+        {"depth": 30, "temp": -1.6},
+        {"depth": 40, "temp": -1.2},
+        {"depth": 50, "temp": -1},
+        {"depth": 70, "temp": -0.8},
+        {"depth": 90, "temp": -0.8},
+        {"depth": 100, "temp": -0.7}
+    ]
+}

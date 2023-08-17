@@ -1,0 +1,48 @@
+{
+    "layers": [
+        {
+            "thickness": 7,
+            "hardness": "4F",
+            "grain": "MF",
+            "size": null,
+            "lwc": "V"
+        },
+        {
+            "thickness": 17,
+            "hardness": "1F",
+            "grain": "RG",
+            "size": null,
+            "lwc": "D-M"
+        },
+        {
+            "thickness": 2,
+            "hardness": "F-4F",
+            "grain": "FCsf",
+            "size": 0.5,
+            "lwc": "D"
+        },
+        {
+            "thickness": 8,
+            "hardness": "P+/P-K",
+            "grain": "MFpc",
+            "size": null,
+            "lwc": "D"
+        },
+        {
+            "thickness": 6,
+            "hardness": "1F",
+            "grain": "MF",
+            "size": null,
+            "lwc": "D"
+        },
+        {
+            "thickness": 40,
+            "hardness": "K",
+            "grain": "MFpc",
+            "size": null,
+            "lwc": null
+        }
+    ],
+    "airTemp": 1.2,
+    "snowTemp": null
+}

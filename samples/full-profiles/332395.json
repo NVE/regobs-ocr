@@ -1,0 +1,34 @@
+{
+    "layers": [
+        {
+            "thickness": 15,
+            "hardness": "F",
+            "grain": "PP",
+            "size": null,
+            "lwc": null
+        },
+        {
+            "thickness": 10,
+            "hardness": "K",
+            "grain": "MFcl",
+            "size": null,
+            "lwc": null
+        },
+        {
+            "thickness": 2,
+            "hardness": "4F",
+            "grain": "FCsf",
+            "size": null,
+            "lwc": null
+        },
+        {
+            "thickness": 15,
+            "hardness": "K",
+            "grain": "MFcl",
+            "size": null,
+            "lwc": null 
+        }
+    ],
+    "airTemp": null,
+    "snowTemp": null
+}
