@@ -1,8 +1,22 @@
 # Regobs OCR
 
+## OCR of snow profile layers and temperature profile
+
+* Hand-written sample profiles are available in [samples/full-profiles/](./samples/full-profiles/).
+  * These profiles are fetched from Regobs, and you can find the original observation by going to `https://plot.regobs.no/v1/SnowProfile/123456/SimpleProfile`, where you replace `123456` by the profile's ID number. There are some slight differences between the hand-written samples and the Regobs observations. Some are there by mistake and some where changed on technical grounds.
+* The JSON-samples in the same directory are structured according to the TypeScript interface `SnowProfile` defined in [ts/snow_profile_t.ts](./ts/snow_profile_t.ts).
+
+## Recognition of snow grain classification symbols
+
+* The symbols are defined in Appendix A of [The International Classification for Seasonal Snow on the Ground](https://unesdoc.unesco.org/ark:/48223/pf0000186462/PDF/186462eng.pdf.multi).
+* Hand-written samples for the most important symbols are available in [samples/grain-classes/](./samples/grain-classes/).
+
+
 ## Valid inputs for hand-written snow profile fields
 
 ### Thickness of layer
+
+*This field is mandatory.*
 
 Must be a number greater than 0 with at most 1 decimal place. Decimal separator is a comma.
 
@@ -30,6 +44,8 @@ These may be combined with neighbours to denote water contents between the diffe
 * V-S
 
 ### Layer hardness
+
+*This field is mandatory.*
 
 The following are the basic codes for layer hardness:
 
