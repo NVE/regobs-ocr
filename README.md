@@ -3,7 +3,7 @@
 ## OCR of snow profile layers and temperature profile
 
 * Hand-written sample profiles are available in [samples/full-profiles/](./samples/full-profiles/).
-  * These profiles are fetched from Regobs, and you can find the original observation by going to `https://plot.regobs.no/v1/SnowProfile/123456/SimpleProfile`, where you replace `123456` by the profile's ID number. There are some slight differences between the hand-written samples and the Regobs observations. Some are there by mistake and some where changed on technical grounds.
+  * These profiles are fetched from Regobs, and you can find the original observation by going to `https://plot.regobs.no/v1/SnowProfile/123456/SimpleProfile`, where you replace `123456` by the profile's ID number. There are some slight differences between the hand-written samples and the Regobs observations. Some are there by mistake and some were changed on technical grounds.
 * The JSON-samples in the same directory are structured according to the TypeScript interface `SnowProfile` defined in [ts/snow_profile_t.ts](./ts/snow_profile_t.ts).
 
 ## Recognition of snow grain classification symbols
