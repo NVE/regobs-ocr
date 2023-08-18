@@ -102,3 +102,5 @@ interface ProfileTemperature {
     depth: number,
     temp: number
 }
+
+export { SnowProfile };

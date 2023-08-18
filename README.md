@@ -11,6 +11,31 @@
 * The symbols are defined in Appendix A of [The International Classification for Seasonal Snow on the Ground](https://unesdoc.unesco.org/ark:/48223/pf0000186462/PDF/186462eng.pdf.multi).
 * Hand-written samples for the most important symbols are available in [samples/grain-classes/](./samples/grain-classes/).
 
+## Running boiler-plate TypeScript project
+
+A start to a TypeScript project is available at [ts/](./ts/). This was set up using:
+
+* Node v18.17.1
+* npm v9.8.1
+
+Start by installing the dependencies:
+
+```
+cd ts
+npm install
+```
+
+You can now run the project:
+
+```
+npm start ../samples/full-profiles/319278.jpg
+```
+
+Lint by running:
+
+```
+npm run lint:fix
+```
 
 ## Valid inputs for hand-written snow profile fields
 
