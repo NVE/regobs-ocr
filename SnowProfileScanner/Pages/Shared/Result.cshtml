@@ -1,0 +1,60 @@
+﻿@model SnowProfileScanner.Models.TemperatureProfile
+<h2>Air Temperature: @Model.AirTemp</h2>
+
+<h3>Snow Profile</h3>
+@if (Model.Layers.Any())
+{
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>Thickness</th>
+                <th>LWC</th>
+                <th>Hardness</th>
+                <th>Grain</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var snowProfile in Model.Layers)
+            {
+                <tr>
+                    <td>@snowProfile.Thickness</td>
+                    <td>@snowProfile.LWC</td>
+                    <td>@snowProfile.Hardness</td>
+                    <td>@snowProfile.Grain</td>
+                    <td>@snowProfile.Size</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No snow profiles found.</p>
+}
+
+<h3>Snow Temperatures</h3>
+@if (Model.SnowTemp.Any())
+{
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>Depth</th>
+                <th>Temperature</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var snowTemperature in Model.SnowTemp)
+            {
+                <tr>
+                    <td>@snowTemperature.Depth</td>
+                    <td>@snowTemperature.Temp</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No snow temperatures found.</p>
+}
