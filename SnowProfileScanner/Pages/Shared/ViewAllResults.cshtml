@@ -34,7 +34,7 @@
                 <td>
                     @if (entry.TemperatureProfile != null)
                     {
-                        <a href="@Url.Action("Result", "Home", new { id = entry.RowKey })">View scanned profile</a>
+                        <a href="@Url.Action("ShowProfile", "Home", new { id = entry.RowKey })">View scanned profile</a>
                     }
                     else
                     {
