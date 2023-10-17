@@ -1,12 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Azure;
 using Azure.AI.FormRecognizer.DocumentAnalysis;
 using SnowProfileScanner.Models;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace SnowProfileScanner.Models
@@ -167,30 +162,14 @@ public class HomeController : Controller
     private static HashSet<string> ValidLwc()
     {
         return new HashSet<string>() {
-            "D",
-            "D-M",
-            "M",
-            "M-W",
-            "W",
-            "W-V",
-            "V",
-            "V-S",
-            "S"
+            "D", "D-M", "M", "M-W", "W", "W-V", "V", "V-S", "S"
         };
     }
 
     private static HashSet<string> ValidHardness()
     {
         var hardnesses = new List<string>();
-        var baseHardnesses = new List<string>()
-        {
-            "F",
-            "4F",
-            "1F",
-            "P",
-            "K",
-            "I",
-        };
+        var baseHardnesses = new List<string>() { "F", "4F", "1F", "P", "K", "I" };
         for (var i = 0; i < baseHardnesses.Count; i++)
         {
             var hardness = baseHardnesses[i];
@@ -218,52 +197,15 @@ public class HomeController : Controller
         var types = new HashSet<string>();
         var baseTypes = new List<string>()
         {
-            "PP",
-            "PPco",
-            "PPnd",
-            "PPpl",
-            "PPsd",
-            "PPir",
-            "PPgp",
-            "PPhl",
-            "PPip",
-            "PPrm",
-            "MM",
-            "MMrp",
-            "MMci",
-            "DF",
-            "DFdc",
-            "DFbk",
-            "RG",
-            "RGsr",
-            "RGlr",
-            "RGwp",
-            "RGxf",
-            "FC",
-            "FCso",
-            "FCsf",
-            "FCxr",
-            "DH",
-            "DHcp",
-            "DHpr",
-            "DHch",
-            "DHla",
-            "DHxr",
-            "SH",
-            "SHsu",
-            "SHcv",
-            "SHxr",
-            "MF",
-            "MFcl",
-            "MFpc",
-            "MFsl",
-            "MFcr",
-            "IF",
-            "IFil",
-            "IFic",
-            "IFbi",
-            "IFrc",
-            "IFsc",
+            "PP", "PPco", "PPnd", "PPpl", "PPsd", "PPir", "PPgp", "PPhl", "PPip", "PPrm",
+            "MM", "MMrp", "MMci",
+            "DF", "DFdc", "DFbk",
+            "RG", "RGsr", "RGlr", "RGwp", "RGxf",
+            "FC", "FCso", "FCsf", "FCxr",
+            "DH", "DHcp", "DHpr", "DHch", "DHla", "DHxr",
+            "SH", "SHsu", "SHcv", "SHxr",
+            "MF", "MFcl", "MFpc", "MFsl", "MFcr",
+            "IF", "IFil", "IFic", "IFbi", "IFrc", "IFsc",
         };
         foreach(var type in baseTypes)
         {
