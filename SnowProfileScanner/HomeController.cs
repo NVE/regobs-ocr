@@ -7,14 +7,14 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-
+using System.Globalization;
 
 namespace SnowProfileScanner.Models
 {
     public class TemperatureProfile
     {
         public IEnumerable<SnowProfile> Layers { get; set; }
-        public string? AirTemp { get; set; }
+        public double? AirTemp { get; set; }
         public IEnumerable<SnowTemperature> SnowTemp { get; set; }
 
         public TemperatureProfile()
@@ -25,17 +25,17 @@ namespace SnowProfileScanner.Models
 
         public class SnowTemperature
         {
-            public string Depth { get; set; }
-            public string Temp { get; set; }
+            public double? Depth { get; set; }
+            public double? Temp { get; set; }
         }
 
         public class SnowProfile
         {
-            public string Thickness { get; set; }
-            public string Hardness { get; set; }
-            public string Grain { get; set; }
-            public string? Size { get; set; }
-            public string LWC { get; set; }
+            public double? Thickness { get; set; }
+            public string? Hardness { get; set; }
+            public string? Grain { get; set; }
+            public double? Size { get; set; }
+            public string? LWC { get; set; }
         }
     }
 }
@@ -58,6 +58,8 @@ public class HomeController : Controller
     [HttpPost]
     public async Task<IActionResult> Upload(IFormFile file)
     {
+        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+
         string endpoint = _configuration["AzureFormRecognizerEndpoint"];
         string key = _configuration["AzureFormRecognizerApiKey"];
         AzureKeyCredential credential = new AzureKeyCredential(key);
@@ -86,19 +88,33 @@ public class HomeController : Controller
 
     private IEnumerable<TemperatureProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
     {
-        var snowTemps = tbl1.Cells
+        var rows = tbl1.Cells
             .Where(cell => cell.RowIndex > 1 && !string.IsNullOrWhiteSpace(cell.Content))
             .GroupBy(cell => cell.RowIndex)
-            .Select(group => new TemperatureProfile.SnowTemperature
-            {
-                Depth = group.FirstOrDefault()?.Content?.Replace(" ", string.Empty) ?? "",
-                Temp = group.LastOrDefault()?.Content?.Replace(" ", string.Empty) ?? ""
-            });
+            .Select(
+                group => group.ToList().Select(ToDouble)
+            );
+        double? previousDepth = null;
+        var temps = new List<TemperatureProfile.SnowTemperature>();
+        foreach (var row in rows)
+        {
+            var tempTuple = new TemperatureProfile.SnowTemperature() { };
 
-        return snowTemps.ToList();
+            var d = row.ElementAtOrDefault(0);
+            if (d >= 0 && (previousDepth is null || previousDepth < d))
+            {
+                previousDepth = d;
+                tempTuple.Depth = d;
+            }
+
+            var t = row.ElementAtOrDefault(1);
+            tempTuple.Temp = t <= 0 ? t : null;
+            temps.Add(tempTuple);
+        }
+        return temps;
     }
 
-    private IEnumerable<TemperatureProfile.SnowProfile> DecodeSnowProfile(DocumentTable tbl1)
+    private static IEnumerable<TemperatureProfile.SnowProfile> DecodeSnowProfile(DocumentTable tbl1)
     {
         var snowProfiles = new List<TemperatureProfile.SnowProfile>();
         var rowsCount = tbl1.Cells
@@ -108,18 +124,30 @@ public class HomeController : Controller
         for (int rowIndex = 1; rowIndex <= rowsCount; rowIndex++)
         {
             var row = tbl1.Cells.Where(cell => cell.RowIndex == rowIndex);
-            var lwc = row.SingleOrDefault(cell => cell.ColumnIndex == 1)?.Content?.Replace(" ", string.Empty) ?? "";
-            if(lwc == "0")
+
+            var thickness = ToDouble(row.SingleOrDefault(cell => cell.ColumnIndex == 0));
+
+            var lwc = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 1));
+            if (new List<string>() { "0", "P" }.Contains(lwc))
             {
                 lwc = "D";
             }
+
+            var hardness = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 2))
+                .Replace("IF", "1F");
+
+            var grainType = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 3))
+                .Replace("1F", "IF");
+
+            var grainSize = ToDouble(row.SingleOrDefault(cell => cell.ColumnIndex == 4));
+
             var snowProfile = new TemperatureProfile.SnowProfile
             {
-                Thickness = row.SingleOrDefault(cell => cell.ColumnIndex == 0)?.Content?.Replace(" ", string.Empty) ?? "",
-                LWC = lwc,
-                Hardness = row.SingleOrDefault(cell => cell.ColumnIndex == 2)?.Content?.Replace(" ", string.Empty) ?? "",
-                Grain = row.SingleOrDefault(cell => cell.ColumnIndex == 3)?.Content?.Replace(" ", string.Empty) ?? "",
-                Size = row.SingleOrDefault(cell => cell.ColumnIndex == 4)?.Content?.Replace(" ", string.Empty) ?? ""
+                Thickness = thickness > 0 ? thickness : null,
+                LWC = ValidLwc().Contains(lwc) ? lwc : null,
+                Hardness = ValidHardness().Contains(hardness) ? hardness : null,
+                Grain = ValidGrainType().Contains(grainType) ? grainType : null,
+                Size = grainSize > 0 && grainSize < 40 ? grainSize : null
             };
 
             snowProfiles.Add(snowProfile);
@@ -129,14 +157,138 @@ public class HomeController : Controller
     }
 
 
-    private string DecodeAirTemperature(DocumentTable tbl1)
+    private static double? DecodeAirTemperature(DocumentTable tbl1)
     {
-        var airTemp = tbl1.Cells
-            .SingleOrDefault(cell => cell.RowIndex == 1 && cell.ColumnIndex == 1)?
-            .Content?
-            .Replace(" ", string.Empty) ?? "";
-
-        return airTemp;
+        return ToDouble(tbl1.Cells.SingleOrDefault(
+            cell => cell.RowIndex == 1 && cell.ColumnIndex == 1
+        ));
     }
 
+    private static HashSet<string> ValidLwc()
+    {
+        return new HashSet<string>() {
+            "D",
+            "D-M",
+            "M",
+            "M-W",
+            "W",
+            "W-V",
+            "V",
+            "V-S",
+            "S"
+        };
+    }
+
+    private static HashSet<string> ValidHardness()
+    {
+        var hardnesses = new List<string>();
+        var baseHardnesses = new List<string>()
+        {
+            "F",
+            "4F",
+            "1F",
+            "P",
+            "K",
+            "I",
+        };
+        for (var i = 0; i < baseHardnesses.Count; i++)
+        {
+            var hardness = baseHardnesses[i];
+            hardnesses.Add(hardness + "-");
+            hardnesses.Add(hardness);
+            hardnesses.Add(hardness + "+");
+            if (i < baseHardnesses.Count - 1) hardnesses.Add(hardness + "-" + baseHardnesses[i + 1]);
+        }
+
+        var hardnessGradients = new List<string>();
+        foreach(var upperHardness in hardnesses)
+        {
+            foreach(var lowerHardness in hardnesses)
+            {
+                if (upperHardness == lowerHardness) continue;
+                hardnessGradients.Add(upperHardness + "/" + lowerHardness);
+            }
+        }
+
+        return hardnesses.Concat(hardnessGradients).ToHashSet();
+    }
+
+    private static HashSet<string> ValidGrainType()
+    {
+        var types = new HashSet<string>();
+        var baseTypes = new List<string>()
+        {
+            "PP",
+            "PPco",
+            "PPnd",
+            "PPpl",
+            "PPsd",
+            "PPir",
+            "PPgp",
+            "PPhl",
+            "PPip",
+            "PPrm",
+            "MM",
+            "MMrp",
+            "MMci",
+            "DF",
+            "DFdc",
+            "DFbk",
+            "RG",
+            "RGsr",
+            "RGlr",
+            "RGwp",
+            "RGxf",
+            "FC",
+            "FCso",
+            "FCsf",
+            "FCxr",
+            "DH",
+            "DHcp",
+            "DHpr",
+            "DHch",
+            "DHla",
+            "DHxr",
+            "SH",
+            "SHsu",
+            "SHcv",
+            "SHxr",
+            "MF",
+            "MFcl",
+            "MFpc",
+            "MFsl",
+            "MFcr",
+            "IF",
+            "IFil",
+            "IFic",
+            "IFbi",
+            "IFrc",
+            "IFsc",
+        };
+        foreach(var type in baseTypes)
+        {
+            types.Add(type);
+            foreach(var secType in baseTypes) {
+                if (type == secType) continue;
+                types.Add(type + "(" + secType + ")");
+            }
+        }
+        return types;
+    }
+
+    private static double? ToDouble(DocumentTableCell? cell)
+    {
+        var sReplaced = cell?.Content?
+            .Replace(" ", string.Empty)
+            .Replace(",", ".")
+            .Replace("Overflate", "0")
+            .Replace("I", "1")
+            .Replace("l", "1");
+        return double.TryParse(sReplaced, out var d) ? d : null;
+    }
+
+    private static string ToString(DocumentTableCell? cell)
+    {
+        return cell?.Content?.Replace(" ", string.Empty) ?? "";
+    }
 }
