@@ -14,7 +14,11 @@
 
 <form id="uploadForm" method="post" enctype="multipart/form-data" action="/Home/Upload">
     <div class="form-group">
-        <label for="fileInput">Upload Picture:</label>
+        <label for="nameInput">Navn:</label>
+        <input type="text" class="form-control" id="nameInput" name="name" required>
+    </div>
+    <div class="form-group">
+        <label for="fileInput">Last opp bilde:</label>
         <br />
         <input type="file" class="form-control" id="fileInput" name="file" accept=".jpg, .jpeg, .png" required>
     </div>

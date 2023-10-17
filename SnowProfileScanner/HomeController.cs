@@ -7,38 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-
-
-namespace SnowProfileScanner.Models
-{
-    public class TemperatureProfile
-    {
-        public IEnumerable<SnowProfile> Layers { get; set; }
-        public string? AirTemp { get; set; }
-        public IEnumerable<SnowTemperature> SnowTemp { get; set; }
-
-        public TemperatureProfile()
-        {
-            SnowTemp = new List<SnowTemperature>();
-            Layers = new List<SnowProfile>();
-        }
-
-        public class SnowTemperature
-        {
-            public string Depth { get; set; }
-            public string Temp { get; set; }
-        }
-
-        public class SnowProfile
-        {
-            public string Thickness { get; set; }
-            public string Hardness { get; set; }
-            public string Grain { get; set; }
-            public string? Size { get; set; }
-            public string LWC { get; set; }
-        }
-    }
-}
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 public class HomeController : Controller
 {
@@ -56,7 +28,7 @@ public class HomeController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> Upload(IFormFile file)
+    public async Task<IActionResult> Upload(IFormFile file, string name)
     {
         string endpoint = _configuration["AzureFormRecognizerEndpoint"];
         string key = _configuration["AzureFormRecognizerApiKey"];
@@ -80,9 +52,107 @@ public class HomeController : Controller
                 AirTemp = DecodeAirTemperature(result.Tables[1])
             };
 
+            using (var uploadStream = new MemoryStream(memoryStream.ToArray()))
+            {
+                // Upload image to Azure Blob Storage
+                string connectionString = _configuration["AzureStorageConnectionString"];
+                string containerName = "snowprofilepictures";
+
+                BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
+                BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+
+                string blobName = Guid.NewGuid().ToString();
+                BlobClient blobClient = containerClient.GetBlobClient(blobName);
+
+                BlobUploadOptions options = new BlobUploadOptions
+                {
+                    HttpHeaders = new BlobHttpHeaders
+                    {
+                        ContentType = "image/jpeg", // Set the appropriate Content-Type for your image file
+                    }
+                };
+
+                await blobClient.UploadAsync(uploadStream, options);
+
+                var temperatureProfileEntity = new TemperatureProfileEntity
+                {
+                    PartitionKey = name,
+                    RowKey = Guid.NewGuid().ToString(),
+                    ImageUrl = blobClient.Uri.ToString(),
+                    Name = name,
+                    TemperatureProfile = temperatureProfile
+                };
+
+                // Save temperatureProfileEntity to Azure Table Storage
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+                CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+                CloudTable table = tableClient.GetTableReference("SnowProfiles");
+                await table.CreateIfNotExistsAsync();
+
+                TableOperation insertOperation = TableOperation.Insert(temperatureProfileEntity);
+                await table.ExecuteAsync(insertOperation);
+
+                
+            }
+         
+
             return View("Result", temperatureProfile);
         }
     }
+
+    [HttpGet]
+    public async Task<IActionResult> ViewAllEntries()
+    {
+        string connectionString = _configuration["AzureStorageConnectionString"];
+        CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+        CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+        CloudTable table = tableClient.GetTableReference("SnowProfiles");
+
+        await table.CreateIfNotExistsAsync();
+
+        var query = new TableQuery<TemperatureProfileEntity>();
+        var tableQuerySegment = await table.ExecuteQuerySegmentedAsync(query, null);
+        var results = tableQuerySegment.Results;
+
+        return View("ViewAllResults", results);
+    }
+    [HttpGet]
+    public async Task<IActionResult> Result(string id)
+    {
+        string connectionString = _configuration["AzureStorageConnectionString"];
+        CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+        CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+        CloudTable table = tableClient.GetTableReference("SnowProfiles");
+
+        await table.CreateIfNotExistsAsync();
+
+        var partitionFilter = TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, id);
+        var query = new TableQuery<TemperatureProfileEntity>().Where(partitionFilter);
+
+        var tableQuerySegment = await table.ExecuteQuerySegmentedAsync(query, null);
+        var result = tableQuerySegment.Results;
+        var temperatureProfileEntity = result.FirstOrDefault(); // Assuming there's only one result for the given partitionKey
+
+        if (temperatureProfileEntity != null)
+        {
+            // Convert TemperatureProfileEntity to TemperatureProfile
+            var temperatureProfile = new TemperatureProfile
+            {
+                // Populate properties based on temperatureProfileEntity properties
+                AirTemp = temperatureProfileEntity.TemperatureProfile.AirTemp,
+                Layers = temperatureProfileEntity.TemperatureProfile.Layers, // Assuming Layers is a collection in TemperatureProfileEntity
+                SnowTemp = temperatureProfileEntity.TemperatureProfile.SnowTemp // Assuming SnowTemp is a collection in TemperatureProfileEntity
+            };
+
+            return View("Result", temperatureProfile);
+        }
+        else
+        {
+            // Handle the case where no matching entity is found
+            return NotFound();
+        }
+    }
+
 
     private IEnumerable<TemperatureProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
     {

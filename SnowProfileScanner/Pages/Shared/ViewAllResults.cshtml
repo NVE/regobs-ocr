@@ -1,0 +1,48 @@
+﻿@model IEnumerable<SnowProfileScanner.Models.TemperatureProfileEntity>
+@{
+    Layout = null;
+}
+
+<link rel="stylesheet" type="text/css" href="site.css">
+
+<table class="styled-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Image</th>
+            <th>Profile</th>
+            <!-- Add more columns here based on your TemperatureProfileEntity properties -->
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var entry in Model)
+        {
+            <tr>
+                <td>@entry.Name</td>
+                <td>
+                    @if (!string.IsNullOrEmpty(entry.ImageUrl))
+                    {
+                        <a href="@entry.ImageUrl" target="_blank">
+                            View uploaded image
+                        </a>
+                    }
+                    else
+                    {
+                        <span>No Image</span>
+                    }
+                </td>
+                <td>
+                    @if (entry.TemperatureProfile != null)
+                    {
+                        <a href="@Url.Action("Result", "Home", new { id = entry.RowKey })">View scanned profile</a>
+                    }
+                    else
+                    {
+                        <span>No Profile</span>
+                    }
+                </td>
+                <!-- Add more cells here based on your TemperatureProfileEntity properties -->
+            </tr>
+        }
+    </tbody>
+</table>

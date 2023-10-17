@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.FormRecognizer" Version="4.1.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.18.0" />
+    <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
   </ItemGroup>
 
 </Project>
