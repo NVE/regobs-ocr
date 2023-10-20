@@ -1,28 +1,27 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Azure;
 using Azure.AI.FormRecognizer.DocumentAnalysis;
 using SnowProfileScanner.Models;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using SnowProfileScanner.Services;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-
+using System.Text.Json;
 
 public class UploadController : Controller
 {
 
     private readonly IConfiguration _configuration;
     private readonly TemperatureProfileService _temperatureProfileService;
+    private readonly HttpClient _httpClient;
+    private const string RECAPTCHA_URL = "https://www.google.com/recaptcha/api/siteverify";
 
-    public UploadController(IConfiguration configuration, TemperatureProfileService temperatureProfileService)
-    {
+    private readonly string _remoteServiceBaseUrl;
+
+    public UploadController(
+        IConfiguration configuration,
+        TemperatureProfileService temperatureProfileService,
+        HttpClient httpClient
+    ) {
+        _httpClient = httpClient;
         _configuration = configuration;
         _temperatureProfileService = temperatureProfileService;
     }
@@ -32,15 +31,34 @@ public class UploadController : Controller
         return View();
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Upload(IFormFile file, string name)
-    {
+    [Microsoft.AspNetCore.Mvc.HttpPost]
+    public async Task<IActionResult> Upload(
+        IFormFile file,
+        string name,
+        [FromForm(Name="g-recaptcha-response")] string recaptchaResponse
+    ) {
         Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
         string endpoint = _configuration["AzureFormRecognizerEndpoint"];
         string key = _configuration["AzureFormRecognizerApiKey"];
         AzureKeyCredential credential = new AzureKeyCredential(key);
         DocumentAnalysisClient client = new DocumentAnalysisClient(new Uri(endpoint), credential);
+
+        if (bool.Parse(_configuration["UseCaptcha"]))
+        {
+            var recaptchaBody = new FormUrlEncodedContent(new Dictionary<string, string> {
+                { "secret", _configuration["RecaptchaSecret"] },
+                { "response", recaptchaResponse }
+            });
+            var recaptchaValidationResponse = await _httpClient.PostAsync(RECAPTCHA_URL, recaptchaBody);
+            bool recaptchaIsValid = JsonSerializer.Deserialize<RecaptchaValidationResponse>(
+                await recaptchaValidationResponse.Content.ReadAsStringAsync()
+            )?.success ?? false;
+            if (!recaptchaIsValid)
+            {
+                return this.StatusCode(401);
+            }
+        }
 
         using (var memoryStream = new MemoryStream())
         {
