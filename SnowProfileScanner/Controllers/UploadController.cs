@@ -13,6 +13,9 @@ public class UploadController : Controller
     private readonly TemperatureProfileService _temperatureProfileService;
     private readonly HttpClient _httpClient;
     private const string RECAPTCHA_URL = "https://www.google.com/recaptcha/api/siteverify";
+    private static readonly HashSet<string> VALID_LWC = ValidLwc();
+    private static readonly HashSet<string> VALID_HARDNESS = ValidHardness();
+    private static readonly HashSet<string> VALID_GRAINTYPE = ValidGrainType();
 
     private readonly string _remoteServiceBaseUrl;
 
@@ -132,9 +135,9 @@ public class UploadController : Controller
             var snowProfile = new TemperatureProfile.SnowProfile
             {
                 Thickness = thickness > 0 ? thickness : null,
-                LWC = ValidLwc().Contains(lwc) ? lwc : null,
-                Hardness = ValidHardness().Contains(hardness) ? hardness : null,
-                Grain = ValidGrainType().Contains(grainType) ? grainType : null,
+                LWC = VALID_LWC.Contains(lwc) ? lwc : null,
+                Hardness = VALID_HARDNESS.Contains(hardness) ? hardness : null,
+                Grain = VALID_GRAINTYPE.Contains(grainType) ? grainType : null,
                 Size = grainSize > 0 && grainSize < 40 ? grainSize : null
             };
 
