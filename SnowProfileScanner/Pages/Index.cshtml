@@ -23,15 +23,19 @@
         <br />
         <input type="file" class="form-control" id="fileInput" name="file" accept=".jpg, .jpeg, .png" required>
     </div>
-    @if(Model._useCaptcha)
+    @if (Model.useCaptcha)
     {
         <br />
         <div class="form-group">
-            <div class="g-recaptcha" data-sitekey="6Ldu-q0oAAAAAEieJdQ-UuJlRk1XMlbVvhkkJUPi"></div>
+            <div class="g-recaptcha" data-sitekey="@Model.siteKey" data-callback="recaptchaCallback"></div>
         </div>
+        <br />
+        <button type="submit" id="form-submit" class="btn btn-primary d-none">Submit</button>
+    } else
+    {
+        <br />
+        <button type="submit" id="form-submit" class="btn btn-primary">Submit</button>
     }
-    <br />
-    <button type="submit" class="btn btn-primary">Submit</button>
 </form>
 
 <script>
@@ -41,4 +45,8 @@
             $("#loadingSpinner").show(); // Show loading spinner when form is submitted
         });
     });
+
+    var recaptchaCallback = () => {
+        $("#form-submit").toggleClass("d-none");
+    };
 </script>
