@@ -44,20 +44,9 @@ public class UploadController : Controller
         AzureKeyCredential credential = new AzureKeyCredential(key);
         DocumentAnalysisClient client = new DocumentAnalysisClient(new Uri(endpoint), credential);
 
-        if (bool.Parse(_configuration["UseCaptcha"]))
+        if (bool.Parse(_configuration["UseCaptcha"]) && !await IsCaptchaValid(recaptchaResponse))
         {
-            var recaptchaBody = new FormUrlEncodedContent(new Dictionary<string, string> {
-                { "secret", _configuration["RecaptchaSecret"] },
-                { "response", recaptchaResponse }
-            });
-            var recaptchaValidationResponse = await _httpClient.PostAsync(RECAPTCHA_URL, recaptchaBody);
-            bool recaptchaIsValid = JsonSerializer.Deserialize<RecaptchaValidationResponse>(
-                await recaptchaValidationResponse.Content.ReadAsStringAsync()
-            )?.success ?? false;
-            if (!recaptchaIsValid)
-            {
-                return this.StatusCode(401);
-            }
+            return this.StatusCode(401);
         }
 
         using (var memoryStream = new MemoryStream())
@@ -236,5 +225,18 @@ public class UploadController : Controller
     private static string ToString(DocumentTableCell? cell)
     {
         return cell?.Content?.Replace(" ", string.Empty) ?? "";
+    }
+
+    private async Task<bool> IsCaptchaValid(string recaptchaResponse)
+    {
+        var recaptchaBody = new FormUrlEncodedContent(new Dictionary<string, string> {
+                { "secret", _configuration["RecaptchaSecret"] },
+                { "response", recaptchaResponse }
+            });
+        var recaptchaValidationResponse = await _httpClient.PostAsync(RECAPTCHA_URL, recaptchaBody);
+        var result = JsonSerializer.Deserialize<RecaptchaValidationResponse>(
+            await recaptchaValidationResponse.Content.ReadAsStringAsync()
+        )?.success ?? false;
+        return result;
     }
 }
