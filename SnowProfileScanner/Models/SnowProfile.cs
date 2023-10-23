@@ -1,15 +1,15 @@
 ﻿namespace SnowProfileScanner.Models
 {
-    public class TemperatureProfile
+    public class SnowProfile
     {
-        public IEnumerable<SnowProfile> Layers { get; set; }
+        public IEnumerable<Layer> Layers { get; set; }
         public double? AirTemp { get; set; }
         public IEnumerable<SnowTemperature> SnowTemp { get; set; }
 
-        public TemperatureProfile()
+        public SnowProfile()
         {
             SnowTemp = new List<SnowTemperature>();
-            Layers = new List<SnowProfile>();
+            Layers = new List<Layer>();
         }
 
         public class SnowTemperature
@@ -18,7 +18,7 @@
             public double? Temp { get; set; }
         }
 
-        public class SnowProfile
+        public class Layer
         {
             public double? Thickness { get; set; }
             public string? Hardness { get; set; }

@@ -4,13 +4,13 @@ using Newtonsoft.Json;
 using SnowProfileScanner.Models;
 namespace SnowProfileScanner.Models
 {
-    public class TemperatureProfileEntity : ITableEntity
+    public class SnowProfileEntity : ITableEntity
     {
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public string ImageUrl { get; set; }
         public string Name { get; set; }
-        public TemperatureProfile TemperatureProfile { get; set; }
+        public SnowProfile SnowProfile { get; set; }
         DateTimeOffset ITableEntity.Timestamp { get; set; }
         public string ETag { get; set; }
 
@@ -18,10 +18,10 @@ namespace SnowProfileScanner.Models
         {
             this.ImageUrl = properties["ImageUrl"].StringValue;
             this.Name = properties["Name"].StringValue;
-            if (properties.ContainsKey("TemperatureProfile"))
+            if (properties.ContainsKey("SnowProfile"))
             {
-                var temperatureProfileJson = properties["TemperatureProfile"].StringValue;
-                this.TemperatureProfile = JsonConvert.DeserializeObject<TemperatureProfile>(temperatureProfileJson);
+                var snowProfileJson = properties["SnowProfile"].StringValue;
+                this.SnowProfile = JsonConvert.DeserializeObject<SnowProfile>(snowProfileJson);
             }
         }
         public IDictionary<string, EntityProperty> WriteEntity(OperationContext operationContext)
@@ -39,10 +39,10 @@ namespace SnowProfileScanner.Models
                 properties.Add("ETag", new EntityProperty(this.ETag));
             }
 
-            if (this.TemperatureProfile != null)
+            if (this.SnowProfile != null)
             {
-                var temperatureProfileJson = JsonConvert.SerializeObject(this.TemperatureProfile);
-                properties.Add("TemperatureProfile", new EntityProperty(temperatureProfileJson));
+                var snowProfileJson = JsonConvert.SerializeObject(this.SnowProfile);
+                properties.Add("SnowProfile", new EntityProperty(snowProfileJson));
             }
 
             return properties;

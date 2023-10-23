@@ -6,39 +6,39 @@ using SnowProfileScanner.Models;
 
 namespace SnowProfileScanner.Services
 {
-    public class TemperatureProfileService
+    public class SnowProfileService
     {
         private readonly IConfiguration _configuration;
 
-        public TemperatureProfileService(IConfiguration configuration)
+        public SnowProfileService(IConfiguration configuration)
         {
             _configuration = configuration;
         }
-        public async Task UploadProfile(string name, MemoryStream memoryStream, TemperatureProfile temperatureProfile)
+        public async Task UploadProfile(string name, MemoryStream memoryStream, SnowProfile snowProfile)
         {
             using (var uploadStream = new MemoryStream(memoryStream.ToArray()))
             {
-                // Upload image to Azure Blob Storage
+                
                 string connectionString = _configuration["AzureStorageConnectionString"];
 
                 BlobClient blobClient = await UploadImage(uploadStream, connectionString);
 
-                var temperatureProfileEntity = new TemperatureProfileEntity
+                var snowProfileEntity = new SnowProfileEntity
                 {
                     PartitionKey = name,
                     RowKey = Guid.NewGuid().ToString(),
                     ImageUrl = blobClient.Uri.ToString(),
                     Name = name,
-                    TemperatureProfile = temperatureProfile
+                    SnowProfile = snowProfile
                 };
 
-                // Save temperatureProfileEntity to Azure Table Storage
+                // Save snowProfileEntity to Azure Table Storage
                 CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
                 CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
                 CloudTable table = tableClient.GetTableReference("SnowProfiles");
                 await table.CreateIfNotExistsAsync();
 
-                TableOperation insertOperation = TableOperation.Insert(temperatureProfileEntity);
+                TableOperation insertOperation = TableOperation.Insert(snowProfileEntity);
                 await table.ExecuteAsync(insertOperation);
 
 
@@ -58,7 +58,7 @@ namespace SnowProfileScanner.Services
             {
                 HttpHeaders = new BlobHttpHeaders
                 {
-                    ContentType = "image/jpeg", // Set the appropriate Content-Type for your image file
+                    ContentType = "image/jpeg", 
                 }
             };
 
@@ -66,7 +66,7 @@ namespace SnowProfileScanner.Services
             return blobClient;
         }
 
-        public async Task<List<TemperatureProfileEntity>> GetAll()
+        public async Task<List<SnowProfileEntity>> GetAll()
         {
             string connectionString = _configuration["AzureStorageConnectionString"];
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
@@ -75,13 +75,13 @@ namespace SnowProfileScanner.Services
 
             await table.CreateIfNotExistsAsync();
 
-            var query = new TableQuery<TemperatureProfileEntity>();
+            var query = new TableQuery<SnowProfileEntity>();
             var tableQuerySegment = await table.ExecuteQuerySegmentedAsync(query, null);
             var results = tableQuerySegment.Results;
             return results;
         }
 
-        public async Task<TemperatureProfileEntity?> Get(string id)
+        public async Task<SnowProfileEntity?> Get(string id)
         {
             string connectionString = _configuration["AzureStorageConnectionString"];
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
@@ -91,11 +91,11 @@ namespace SnowProfileScanner.Services
             await table.CreateIfNotExistsAsync();
 
             var partitionFilter = TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, id);
-            var query = new TableQuery<TemperatureProfileEntity>().Where(partitionFilter);
+            var query = new TableQuery<SnowProfileEntity>().Where(partitionFilter);
 
             var tableQuerySegment = await table.ExecuteQuerySegmentedAsync(query, null);
             var result = tableQuerySegment.Results;
-            var temperatureProfileEntity = result.FirstOrDefault(); // Assuming there's only one result for the given partitionKey
+            var temperatureProfileEntity = result.FirstOrDefault(); 
             return temperatureProfileEntity;
         }
 

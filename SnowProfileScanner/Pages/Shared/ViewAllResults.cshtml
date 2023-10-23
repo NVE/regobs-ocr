@@ -1,4 +1,4 @@
-﻿@model IEnumerable<SnowProfileScanner.Models.TemperatureProfileEntity>
+﻿@model IEnumerable<SnowProfileScanner.Models.SnowProfileEntity>
 @{
     Layout = null;
 }
@@ -32,7 +32,7 @@
                     }
                 </td>
                 <td>
-                    @if (entry.TemperatureProfile != null)
+                    @if (entry.SnowProfile != null)
                     {
                         <a href="@Url.Action("ShowProfile", "Home", new { id = entry.RowKey })">View scanned profile</a>
                     }

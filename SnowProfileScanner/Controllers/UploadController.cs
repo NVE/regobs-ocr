@@ -10,7 +10,7 @@ public class UploadController : Controller
 {
 
     private readonly IConfiguration _configuration;
-    private readonly TemperatureProfileService _temperatureProfileService;
+    private readonly SnowProfileService _snowProfileService;
     private readonly HttpClient _httpClient;
     private const string RECAPTCHA_URL = "https://www.google.com/recaptcha/api/siteverify";
     private static readonly HashSet<string> VALID_LWC = ValidLwc();
@@ -21,12 +21,12 @@ public class UploadController : Controller
 
     public UploadController(
         IConfiguration configuration,
-        TemperatureProfileService temperatureProfileService,
+        SnowProfileService snowProfileService,
         HttpClient httpClient
     ) {
         _httpClient = httpClient;
         _configuration = configuration;
-        _temperatureProfileService = temperatureProfileService;
+        _snowProfileService = snowProfileService;
     }
 
     public IActionResult Index()
@@ -62,22 +62,22 @@ public class UploadController : Controller
 
             AnalyzeResult result = operation.Value;
 
-            var temperatureProfile = new TemperatureProfile
+            var snowProfile = new SnowProfile
             {
                 SnowTemp = DecodeSnowTemperature(result.Tables[1]),
                 Layers = DecodeSnowProfile(result.Tables[0]),
                 AirTemp = DecodeAirTemperature(result.Tables[1])
             };
-            await _temperatureProfileService.UploadProfile(name, memoryStream, temperatureProfile);
+            await _snowProfileService.UploadProfile(name, memoryStream, snowProfile);
 
-            return View("Result", temperatureProfile);
+            return View("Result", snowProfile);
         }
     }
 
     
     
 
-    private IEnumerable<TemperatureProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
+    private IEnumerable<SnowProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
     {
         var rows = tbl1.Cells
             .Where(cell => cell.RowIndex > 1 && !string.IsNullOrWhiteSpace(cell.Content))
@@ -86,10 +86,10 @@ public class UploadController : Controller
                 group => group.ToList().Select(ToDouble)
             );
         double? previousDepth = null;
-        var temps = new List<TemperatureProfile.SnowTemperature>();
+        var temps = new List<SnowProfile.SnowTemperature>();
         foreach (var row in rows)
         {
-            var tempTuple = new TemperatureProfile.SnowTemperature() { };
+            var tempTuple = new SnowProfile.SnowTemperature() { };
 
             var d = row.ElementAtOrDefault(0);
             if (d >= 0 && (previousDepth is null || previousDepth < d))
@@ -105,9 +105,9 @@ public class UploadController : Controller
         return temps;
     }
 
-    private static IEnumerable<TemperatureProfile.SnowProfile> DecodeSnowProfile(DocumentTable tbl1)
+    private static IEnumerable<SnowProfile.Layer> DecodeSnowProfile(DocumentTable tbl1)
     {
-        var snowProfiles = new List<TemperatureProfile.SnowProfile>();
+        var snowProfiles = new List<SnowProfile.Layer>();
         var rowsCount = tbl1.Cells
             .Where(cell => cell.ColumnIndex == 0 && !string.IsNullOrWhiteSpace(cell.Content))
             .Max(cell => cell.RowIndex);
@@ -132,7 +132,7 @@ public class UploadController : Controller
 
             var grainSize = ToDouble(row.SingleOrDefault(cell => cell.ColumnIndex == 4));
 
-            var snowProfile = new TemperatureProfile.SnowProfile
+            var snowProfile = new SnowProfile.Layer
             {
                 Thickness = thickness > 0 ? thickness : null,
                 LWC = VALID_LWC.Contains(lwc) ? lwc : null,
