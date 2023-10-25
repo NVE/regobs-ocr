@@ -6,20 +6,36 @@
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @using Microsoft.AspNetCore.Http
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 <div id="loadingSpinner" style="display:none;">
     
     <div class="spinner"></div> <!-- You can replace this with your loading spinner HTML/CSS -->
 </div>
 
-<form id="uploadForm" method="post" enctype="multipart/form-data" action="/Home/Upload">
+<form id="uploadForm" method="post" enctype="multipart/form-data" action="/Upload/Upload">
     <div class="form-group">
-        <label for="fileInput">Upload Picture:</label>
+        <label for="nameInput">Navn:</label>
+        <input type="text" class="form-control" id="nameInput" name="name" required>
+    </div>
+    <div class="form-group">
+        <label for="fileInput">Last opp bilde:</label>
         <br />
         <input type="file" class="form-control" id="fileInput" name="file" accept=".jpg, .jpeg, .png" required>
     </div>
-    <br />
-    <button type="submit" class="btn btn-primary">Submit</button>
+    @if (Model.useCaptcha)
+    {
+        <br />
+        <div class="form-group">
+            <div class="g-recaptcha" data-sitekey="@Model.siteKey" data-callback="recaptchaCallback"></div>
+        </div>
+        <br />
+        <button type="submit" id="form-submit" class="btn btn-primary d-none">Submit</button>
+    } else
+    {
+        <br />
+        <button type="submit" id="form-submit" class="btn btn-primary">Submit</button>
+    }
 </form>
 
 <script>
@@ -29,4 +45,8 @@
             $("#loadingSpinner").show(); // Show loading spinner when form is submitted
         });
     });
+
+    var recaptchaCallback = () => {
+        $("#form-submit").toggleClass("d-none");
+    };
 </script>
