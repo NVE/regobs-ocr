@@ -139,6 +139,7 @@ public class UploadController : Controller
                 .Replace("0", "P");
 
             var grainTypeText = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 3))
+                .Replace("t", "f")
                 .ToUpper()
                 .Replace("1F", "IF");
             var grainType = grainTypeText.GetPrimaryGrainForm();
