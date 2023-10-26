@@ -5,6 +5,10 @@ using SnowProfileScanner.Models;
 using System.Globalization;
 using SnowProfileScanner.Services;
 using System.Text.Json;
+using System.Data;
+using SnowProfileScanner.Services.Caaml;
+using System.Text;
+using System.Net;
 
 public class UploadController : Controller
 {
@@ -13,6 +17,7 @@ public class UploadController : Controller
     private readonly SnowProfileService _snowProfileService;
     private readonly HttpClient _httpClient;
     private const string RECAPTCHA_URL = "https://www.google.com/recaptcha/api/siteverify";
+    private const string PLOT_URL = "https://test-plot.regobs.no/v1/SnowProfile/PngFromCaaml?graphType=MobileProfile&height=750&width=480";
     private static readonly HashSet<string> VALID_LWC = ValidLwc();
     private static readonly HashSet<string> VALID_HARDNESS = ValidHardness();
     private static readonly HashSet<string> VALID_GRAINTYPE = ValidGrainType();
@@ -52,38 +57,41 @@ public class UploadController : Controller
             return this.StatusCode(401);
         }
 
-        using (var memoryStream = new MemoryStream())
+        using var memoryStream = new MemoryStream();
+        using var plotStream = new MemoryStream();
+        await file.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+
+        AnalyzeDocumentOperation operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, "KodedagModel", memoryStream);
+        await operation.WaitForCompletionAsync();
+
+        AnalyzeResult result = operation.Value;
+
+        var numberOfTables = result.Tables.Count();
+        var snowProfile = new SnowProfile
         {
-            await file.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
+            SnowTemp = numberOfTables > 1 ? DecodeSnowTemperature(result.Tables[1]) : new(),
+            Layers = numberOfTables > 0 ? DecodeSnowProfile(result.Tables[0]) : new(),
+            AirTemp = numberOfTables > 1 ? DecodeAirTemperature(result.Tables[1]) : null,
+        };
 
-            AnalyzeDocumentOperation operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, "KodedagModel", memoryStream);
-            await operation.WaitForCompletionAsync();
+        var plotStatus = await GetPlot(CaamlService.ConvertToCaaml(snowProfile), plotStream);
+        var plot = plotStatus == HttpStatusCode.OK ? plotStream : null;
+        await _snowProfileService.UploadProfile(name, memoryStream, plot, snowProfile);
 
-            AnalyzeResult result = operation.Value;
-
-            var snowProfile = new SnowProfile
-            {
-                SnowTemp = DecodeSnowTemperature(result.Tables[1]),
-                Layers = DecodeSnowProfile(result.Tables[0]),
-                AirTemp = DecodeAirTemperature(result.Tables[1])
-            };
-            await _snowProfileService.UploadProfile(name, memoryStream, snowProfile);
-
-            return View("Result", snowProfile);
-        }
+        return View("Result", snowProfile);
     }
 
     
     
 
-    private IEnumerable<SnowProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
+    private List<SnowProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
     {
         var rows = tbl1.Cells
             .Where(cell => cell.RowIndex > 1 && !string.IsNullOrWhiteSpace(cell.Content))
             .GroupBy(cell => cell.RowIndex)
             .Select(
-                group => group.ToList().Select(ToDouble)
+                group => group.ToList().Select(cell => ToDouble(cell.Content))
             );
         double? previousDepth = null;
         var temps = new List<SnowProfile.SnowTemperature>();
@@ -105,7 +113,7 @@ public class UploadController : Controller
         return temps;
     }
 
-    private static IEnumerable<SnowProfile.Layer> DecodeSnowProfile(DocumentTable tbl1)
+    private static List<SnowProfile.Layer> DecodeSnowProfile(DocumentTable tbl1)
     {
         var snowProfiles = new List<SnowProfile.Layer>();
         var rowsCount = tbl1.Cells
@@ -116,21 +124,44 @@ public class UploadController : Controller
         {
             var row = tbl1.Cells.Where(cell => cell.RowIndex == rowIndex);
 
-            var thickness = ToDouble(row.SingleOrDefault(cell => cell.ColumnIndex == 0));
+            var thickness = ToDouble(row.SingleOrDefault(cell => cell.ColumnIndex == 0)?.Content);
 
-            var lwc = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 1));
-            if (new List<string>() { "0", "P" }.Contains(lwc))
-            {
-                lwc = "D";
-            }
+            var lwc = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 1))
+                .ToUpper()
+                .Replace("O", "D")
+                .Replace("P", "D")
+                .Replace("0", "D");
 
             var hardness = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 2))
-                .Replace("IF", "1F");
+                .ToUpper()
+                .Replace("IF", "1F")
+                .Replace("O", "P")
+                .Replace("D", "P")
+                .Replace("0", "P");
 
-            var grainType = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 3))
+            var grainTypeText = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 3))
+                .ToUpper()
                 .Replace("1F", "IF");
+            var grainType = grainTypeText.GetPrimaryGrainForm();
+            if (grainType.Count() == 4)
+            {
+                grainType = grainType.Substring(0, 2) + grainType.Substring(2).ToLower();
+            }
+            var grainTypeSec = grainTypeText.GetSecondaryGrainForm();
+            if (grainTypeSec is not null && grainTypeSec.Count() == 4)
+            {
+                grainTypeSec = grainTypeSec.Substring(0, 2) + grainTypeSec.Substring(2).ToLower();
+            }
 
-            var grainSize = ToDouble(row.SingleOrDefault(cell => cell.ColumnIndex == 4));
+
+            var grainSizeText = row.SingleOrDefault(cell => cell.ColumnIndex == 4)?.Content ?? "";
+            var grainSizeSplit = grainSizeText.Split("-");
+            var grainSize = ToDouble(grainSizeSplit.First());
+            double? grainSizeMax = null;
+            if (grainSize is not null && grainSizeSplit.Length > 1)
+            {
+                grainSizeMax = ToDouble(grainSizeSplit.Last());
+            }
 
             var snowProfile = new SnowProfile.Layer
             {
@@ -138,7 +169,10 @@ public class UploadController : Controller
                 LWC = VALID_LWC.Contains(lwc) ? lwc : null,
                 Hardness = VALID_HARDNESS.Contains(hardness) ? hardness : null,
                 Grain = VALID_GRAINTYPE.Contains(grainType) ? grainType : null,
-                Size = grainSize > 0 && grainSize < 40 ? grainSize : null
+                GrainSecondary = VALID_GRAINTYPE.Contains(grainTypeSec) ? grainTypeSec : null,
+                Size = grainSize > 0 && grainSize < 40 ? grainSize : null,
+                SizeMax = grainSizeMax > 0 && grainSizeMax < 40 && grainSizeMax > grainSize
+                    ? grainSizeMax : null,
             };
 
             snowProfiles.Add(snowProfile);
@@ -152,7 +186,7 @@ public class UploadController : Controller
     {
         return ToDouble(tbl1.Cells.SingleOrDefault(
             cell => cell.RowIndex == 1 && cell.ColumnIndex == 1
-        ));
+        )?.Content);
     }
 
     private static HashSet<string> ValidLwc()
@@ -166,13 +200,13 @@ public class UploadController : Controller
     {
         var hardnesses = new List<string>();
         var baseHardnesses = new List<string>() { "F", "4F", "1F", "P", "K", "I" };
-        for (var i = 0; i < baseHardnesses.Count; i++)
+        for (var i = 0; i < baseHardnesses.Count(); i++)
         {
             var hardness = baseHardnesses[i];
             hardnesses.Add(hardness + "-");
             hardnesses.Add(hardness);
             hardnesses.Add(hardness + "+");
-            if (i < baseHardnesses.Count - 1) hardnesses.Add(hardness + "-" + baseHardnesses[i + 1]);
+            if (i < baseHardnesses.Count() - 1) hardnesses.Add(hardness + "-" + baseHardnesses[i + 1]);
         }
 
         var hardnessGradients = new List<string>();
@@ -214,9 +248,9 @@ public class UploadController : Controller
         return types;
     }
 
-    private static double? ToDouble(DocumentTableCell? cell)
+    private static double? ToDouble(string? s)
     {
-        var sReplaced = cell?.Content?
+        var sReplaced = s?
             .Replace(" ", string.Empty)
             .Replace(",", ".")
             .Replace("Overflate", "0")
@@ -242,4 +276,15 @@ public class UploadController : Controller
         )?.success ?? false;
         return result;
     }
+
+    private async Task<HttpStatusCode> GetPlot(string caaml, MemoryStream ms)
+    {
+        var body = new StringContent(caaml, Encoding.UTF8, "text/xml"); ;
+        var plotResponse = await _httpClient.PostAsync(PLOT_URL, body);
+        plotResponse.Content.ReadAsStream().CopyTo(ms);
+        return plotResponse.StatusCode;
+    }
+
+    [Serializable]
+    public class RemoteResourceException : Exception { }
 }

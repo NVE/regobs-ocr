@@ -9,18 +9,18 @@ namespace SnowProfileScanner.Controllers
     public class HomeController: Controller
     {
         private readonly IConfiguration _configuration;
-        private readonly SnowProfileService _temperatureProfileService;
+        private readonly SnowProfileService _snowProfileService;
 
-        public HomeController(IConfiguration configuration, SnowProfileService temperatureProfileService)
+        public HomeController(IConfiguration configuration, SnowProfileService snowProfileService)
         {
             _configuration = configuration;
-            _temperatureProfileService = temperatureProfileService;
+            _snowProfileService = snowProfileService;
         }
 
         [HttpGet]
         public async Task<IActionResult> ViewAllEntries()
         {
-            List<SnowProfileEntity> results = await _temperatureProfileService.GetAll();
+            List<SnowProfileEntity> results = await _snowProfileService.GetAll();
 
             return View("ViewAllResults", results);
         }
@@ -30,20 +30,20 @@ namespace SnowProfileScanner.Controllers
         [HttpGet]
         public async Task<IActionResult> ShowProfile(string id)
         {
-            SnowProfileEntity? temperatureProfileEntity = await _temperatureProfileService.Get(id);
+            SnowProfileEntity? snowProfileEntity = await _snowProfileService.Get(id);
 
-            if (temperatureProfileEntity != null)
+            if (snowProfileEntity != null)
             {
-                // Convert TemperatureProfileEntity to TemperatureProfile
-                var temperatureProfile = new SnowProfile
+                // Convert SnowProfileEntity to SnowProfile
+                var snowProfile = new SnowProfile
                 {
                     // Populate properties based on temperatureProfileEntity properties
-                    AirTemp = temperatureProfileEntity.SnowProfile.AirTemp,
-                    Layers = temperatureProfileEntity.SnowProfile.Layers, 
-                    SnowTemp = temperatureProfileEntity.SnowProfile.SnowTemp 
+                    AirTemp = snowProfileEntity.SnowProfile.AirTemp,
+                    Layers = snowProfileEntity.SnowProfile.Layers,
+                    SnowTemp = snowProfileEntity.SnowProfile.SnowTemp
                 };
 
-                return View("Result", temperatureProfile);
+                return View("Result", snowProfile);
             }
             else
             {

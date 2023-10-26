@@ -14,39 +14,49 @@ namespace SnowProfileScanner.Services
         {
             _configuration = configuration;
         }
-        public async Task UploadProfile(string name, MemoryStream memoryStream, SnowProfile snowProfile)
-        {
-            using (var uploadStream = new MemoryStream(memoryStream.ToArray()))
+        public async Task UploadProfile(
+            string name,
+            MemoryStream memoryStream,
+            MemoryStream? plotStream,
+            SnowProfile snowProfile
+        ) {
+            using var uploadStream = new MemoryStream(memoryStream.ToArray());
+            string connectionString = _configuration["AzureStorageConnectionString"];
+
+            BlobClient blobClient = await UploadImage(uploadStream, connectionString, "image/jpeg");
+            BlobClient? plotClient = null;
+
+            if (plotStream is not null)
             {
-                
-                string connectionString = _configuration["AzureStorageConnectionString"];
-
-                BlobClient blobClient = await UploadImage(uploadStream, connectionString);
-
-                var snowProfileEntity = new SnowProfileEntity
-                {
-                    PartitionKey = name,
-                    RowKey = Guid.NewGuid().ToString(),
-                    ImageUrl = blobClient.Uri.ToString(),
-                    Name = name,
-                    SnowProfile = snowProfile
-                };
-
-                // Save snowProfileEntity to Azure Table Storage
-                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
-                CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
-                CloudTable table = tableClient.GetTableReference("SnowProfiles");
-                await table.CreateIfNotExistsAsync();
-
-                TableOperation insertOperation = TableOperation.Insert(snowProfileEntity);
-                await table.ExecuteAsync(insertOperation);
-
-
+                using MemoryStream uploadPlotStream = new(plotStream.ToArray());
+                plotClient = await UploadImage(uploadPlotStream, connectionString, "image/png");
             }
+
+            var snowProfileEntity = new SnowProfileEntity
+            {
+                PartitionKey = name,
+                RowKey = Guid.NewGuid().ToString(),
+                ImageUrl = blobClient.Uri.ToString(),
+                PlotUrl = plotClient?.Uri?.ToString(),
+                Name = name,
+                SnowProfile = snowProfile
+            };
+
+            // Save snowProfileEntity to Azure Table Storage
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+            CloudTable table = tableClient.GetTableReference("SnowProfiles");
+            await table.CreateIfNotExistsAsync();
+
+            TableOperation insertOperation = TableOperation.Insert(snowProfileEntity);
+            await table.ExecuteAsync(insertOperation);
         }
 
-        private static async Task<BlobClient> UploadImage(MemoryStream uploadStream, string connectionString)
-        {
+        private static async Task<BlobClient> UploadImage(
+            MemoryStream uploadStream,
+            string connectionString,
+            string contentType
+        ) {
             string containerName = "snowprofilepictures";
             BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
             BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
@@ -58,7 +68,7 @@ namespace SnowProfileScanner.Services
             {
                 HttpHeaders = new BlobHttpHeaders
                 {
-                    ContentType = "image/jpeg", 
+                    ContentType = contentType,
                 }
             };
 

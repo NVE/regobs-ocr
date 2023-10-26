@@ -2,9 +2,9 @@
 {
     public class SnowProfile
     {
-        public IEnumerable<Layer> Layers { get; set; }
+        public List<Layer> Layers { get; set; }
         public double? AirTemp { get; set; }
-        public IEnumerable<SnowTemperature> SnowTemp { get; set; }
+        public List<SnowTemperature> SnowTemp { get; set; }
 
         public SnowProfile()
         {
@@ -23,7 +23,9 @@
             public double? Thickness { get; set; }
             public string? Hardness { get; set; }
             public string? Grain { get; set; }
+            public string? GrainSecondary { get; set; }
             public double? Size { get; set; }
+            public double? SizeMax { get; set; }
             public string? LWC { get; set; }
         }
     }

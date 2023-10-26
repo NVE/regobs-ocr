@@ -1,6 +1,8 @@
 ﻿@model SnowProfileScanner.Models.SnowProfile
 <h2>Air Temperature: @Model.AirTemp</h2>
 
+<
+
 <h3>Snow Profile</h3>
 @if (Model.Layers.Any())
 {
@@ -21,8 +23,8 @@
                     <td>@snowProfile.Thickness</td>
                     <td>@snowProfile.LWC</td>
                     <td>@snowProfile.Hardness</td>
-                    <td>@snowProfile.Grain</td>
-                    <td>@snowProfile.Size</td>
+                    <td>@snowProfile.Grain@(@snowProfile.GrainSecondary is not null ? "(" + snowProfile.GrainSecondary + ")" : "")</td>
+                    <td>@snowProfile.Size@(@snowProfile.SizeMax is not null ? "-" + @snowProfile.SizeMax : "")</td>
                 </tr>
             }
         </tbody>
