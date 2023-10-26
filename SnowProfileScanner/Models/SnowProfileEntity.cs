@@ -9,6 +9,7 @@ namespace SnowProfileScanner.Models
         public string PartitionKey { get; set; }
         public string RowKey { get; set; }
         public string ImageUrl { get; set; }
+        public string? PlotUrl { get; set; }
         public string Name { get; set; }
         public SnowProfile SnowProfile { get; set; }
         DateTimeOffset ITableEntity.Timestamp { get; set; }
@@ -17,6 +18,8 @@ namespace SnowProfileScanner.Models
         public void ReadEntity(IDictionary<string, EntityProperty> properties, OperationContext operationContext)
         {
             this.ImageUrl = properties["ImageUrl"].StringValue;
+            properties.TryGetValue("PlotUrl", out var plotUrl);
+            this.PlotUrl = plotUrl?.StringValue;
             this.Name = properties["Name"].StringValue;
             if (properties.ContainsKey("SnowProfile"))
             {
@@ -31,6 +34,7 @@ namespace SnowProfileScanner.Models
             { "PartitionKey", new EntityProperty(this.PartitionKey) },
             { "RowKey", new EntityProperty(this.RowKey) },
             { "ImageUrl", new EntityProperty(this.ImageUrl) },
+            { "PlotUrl", new EntityProperty(this.PlotUrl) },
             { "Name", new EntityProperty(this.Name) }
         };
 
