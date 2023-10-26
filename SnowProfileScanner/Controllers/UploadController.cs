@@ -17,7 +17,6 @@ public class UploadController : Controller
     private readonly SnowProfileService _snowProfileService;
     private readonly HttpClient _httpClient;
     private const string RECAPTCHA_URL = "https://www.google.com/recaptcha/api/siteverify";
-    private const string PLOT_URL = "https://test-plot.regobs.no/v1/SnowProfile/PngFromCaaml?graphType=MobileProfile&height=750&width=480";
     private static readonly HashSet<string> VALID_LWC = ValidLwc();
     private static readonly HashSet<string> VALID_HARDNESS = ValidHardness();
     private static readonly HashSet<string> VALID_GRAINTYPE = ValidGrainType();
@@ -279,8 +278,9 @@ public class UploadController : Controller
 
     private async Task<HttpStatusCode> GetPlot(string caaml, MemoryStream ms)
     {
+        var plotUrl = _configuration["PlotUrl"];
         var body = new StringContent(caaml, Encoding.UTF8, "text/xml"); ;
-        var plotResponse = await _httpClient.PostAsync(PLOT_URL, body);
+        var plotResponse = await _httpClient.PostAsync(plotUrl, body);
         plotResponse.Content.ReadAsStream().CopyTo(ms);
         return plotResponse.StatusCode;
     }
