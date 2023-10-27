@@ -23,40 +23,18 @@
         <tbody>
         @foreach (var entry in Model)
         {
-            <tr class="clickable-row">
+                <tr class=@(string.IsNullOrEmpty(entry.PlotUrl) ? "red-background" : "clickable-row")>
                     <td style="width: 60%;">@entry.Name</td>
                     <td style="width: 40%;"><a href="@Url.Action("ShowProfile", "Home", new { id = entry.RowKey })">View upload</a></td>
             </tr>
-                <tr class="hidden-row">
-                   
-                        
-                    @if (!string.IsNullOrEmpty(entry.ImageUrl) && !string.IsNullOrEmpty(entry.PlotUrl))
-                    {
-                                
-                                <td style="width: 60%; text-align: center;">
-                                    <img src="@entry.ImageUrl" alt="Uploaded Image" style="max-width: 100%; height: auto;">
-                                </td>
-                                <td style="width: 40%; text-align: center;">
-                                    <img src="@entry.PlotUrl" alt="Uploaded Plot" style="max-width: 100%; height: auto;">
-                                </td>
-                                   
-                    }
-                    else
-                    {
-                        <span>No Image</span>
-                    }
-                       
-                    <div>
-                        @if (entry.SnowProfile != null)
-                        {
-                       
-                        }
-                        else
-                        {
-                            <span>No Profile</span>
-                        }
-                    </div>
-               
+                <tr class="hidden-row">     
+                    <td style="width: 60%; text-align: center;">
+                        <img src="@entry.ImageUrl" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+                    </td>
+                    <td style="width: 40%; text-align: center;">
+                        <img src="@entry.PlotUrl" alt="Uploaded Plot" style="max-width: 100%; height: auto;">
+                    </td>
+
             </tr>
         }
         </tbody>

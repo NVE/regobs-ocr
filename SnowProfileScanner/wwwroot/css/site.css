@@ -97,7 +97,9 @@ body {
     cursor: pointer;
 }
 
-
+.red-background {
+    background-color: #ffe5e5;
+}
 .styled-table tr.selected-row {
     background-color: #fafafa;
 }
