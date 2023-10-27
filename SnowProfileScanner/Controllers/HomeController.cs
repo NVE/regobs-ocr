@@ -34,16 +34,7 @@ namespace SnowProfileScanner.Controllers
 
             if (snowProfileEntity != null)
             {
-                // Convert SnowProfileEntity to SnowProfile
-                var snowProfile = new SnowProfile
-                {
-                    // Populate properties based on temperatureProfileEntity properties
-                    AirTemp = snowProfileEntity.SnowProfile.AirTemp,
-                    Layers = snowProfileEntity.SnowProfile.Layers,
-                    SnowTemp = snowProfileEntity.SnowProfile.SnowTemp
-                };
-
-                return View("Result", snowProfile);
+                return View("Result", snowProfileEntity);
             }
             else
             {
