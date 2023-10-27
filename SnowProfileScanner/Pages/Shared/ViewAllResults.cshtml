@@ -2,48 +2,63 @@
 @{
     Layout = null;
 }
+<script>
+    $(document).ready(function () {
+        $(".clickable-row").click(function () {
+            $(this).toggleClass("selected-row");
+            $(this).next(".hidden-row").toggle();
+        });
+    });
 
+</script>
 <link rel="stylesheet" type="text/css" href="site.css">
 <div class="content">
 <table class="styled-table">
     <thead>
         <tr>
             <th>Name</th>
-            <th>Image</th>
-            <th>Profile</th>
-            <!-- Add more columns here based on your TemperatureProfileEntity properties -->
+            <th></th>
         </tr>
     </thead>
-    <tbody>
+        <tbody>
         @foreach (var entry in Model)
         {
-            <tr>
-                <td>@entry.Name</td>
-                <td>
-                    @if (!string.IsNullOrEmpty(entry.ImageUrl))
+            <tr class="clickable-row">
+                    <td style="width: 60%;">@entry.Name</td>
+                    <td style="width: 40%;"><a href="@Url.Action("ShowProfile", "Home", new { id = entry.RowKey })">View upload</a></td>
+            </tr>
+                <tr class="hidden-row">
+                   
+                        
+                    @if (!string.IsNullOrEmpty(entry.ImageUrl) && !string.IsNullOrEmpty(entry.PlotUrl))
                     {
-                        <a href="@entry.ImageUrl" target="_blank">
-                            View uploaded image
-                        </a>
+                                
+                                <td style="width: 60%; text-align: center;">
+                                    <img src="@entry.ImageUrl" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+                                </td>
+                                <td style="width: 40%; text-align: center;">
+                                    <img src="@entry.PlotUrl" alt="Uploaded Plot" style="max-width: 100%; height: auto;">
+                                </td>
+                                   
                     }
                     else
                     {
                         <span>No Image</span>
                     }
-                </td>
-                <td>
-                    @if (entry.SnowProfile != null)
-                    {
-                        <a href="@Url.Action("ShowProfile", "Home", new { id = entry.RowKey })">View scanned profile</a>
-                    }
-                    else
-                    {
-                        <span>No Profile</span>
-                    }
-                </td>
-                <!-- Add more cells here based on your TemperatureProfileEntity properties -->
+                       
+                    <div>
+                        @if (entry.SnowProfile != null)
+                        {
+                       
+                        }
+                        else
+                        {
+                            <span>No Profile</span>
+                        }
+                    </div>
+               
             </tr>
         }
-    </tbody>
+        </tbody>
 </table>
 </div>

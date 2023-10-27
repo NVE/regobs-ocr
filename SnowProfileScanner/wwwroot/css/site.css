@@ -89,7 +89,23 @@ body {
     left: 50%;
     position: absolute;
 }
+.hidden-row {
+    display: none;
+}
+.styled-table tr.clickable-row:hover {
+    background-color: #fafafa;
+    cursor: pointer;
+}
 
+
+.styled-table tr.selected-row {
+    background-color: #fafafa;
+}
+
+
+    .styled-table tr.selected-row + .hidden-row {
+        background-color: #fafafa;
+    }
 
 @keyframes spin {
     0% {
