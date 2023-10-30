@@ -184,7 +184,7 @@ public class UploadController : Controller
 
 
             var grainSizeText = row.SingleOrDefault(cell => cell.ColumnIndex == 4)?.Content ?? "";
-            var grainSizeSplit = grainSizeText.Split(new Char[] { '-', '–', '—' });
+            var grainSizeSplit = grainSizeText.Split(new Char[] { '-', '–', '—', '_' });
             var grainSize = ToDouble(grainSizeSplit.First());
             double? grainSizeMax = null;
             if (grainSize is not null && grainSizeSplit.Length > 1)
@@ -287,6 +287,9 @@ public class UploadController : Controller
             .Replace("I", "1")
             .Replace(" ", string.Empty)
             .Replace(",", ".")
+            .Replace("–", "-")
+            .Replace("—", "-")
+            .Replace("_", "-")
             .Replace("O", "0")
             .Replace("Z", "2")
             .Replace("G", "6");
