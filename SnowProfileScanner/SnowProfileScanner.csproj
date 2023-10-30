@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="wwwroot\images\logo.jpg" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Azure.AI.FormRecognizer" Version="4.1.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.18.0" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.9" />

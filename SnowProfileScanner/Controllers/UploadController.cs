@@ -76,9 +76,9 @@ public class UploadController : Controller
 
         var plotStatus = await GetPlot(CaamlService.ConvertToCaaml(snowProfile), plotStream);
         var plot = plotStatus == HttpStatusCode.OK ? plotStream : null;
-        await _snowProfileService.UploadProfile(name, memoryStream, plot, snowProfile);
+        var snowProfileEntity = await _snowProfileService.UploadProfile(name, memoryStream, plot, snowProfile);
 
-        return View("Result", snowProfile);
+        return View("Result", snowProfileEntity);
     }
 
     

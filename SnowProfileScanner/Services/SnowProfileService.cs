@@ -14,7 +14,7 @@ namespace SnowProfileScanner.Services
         {
             _configuration = configuration;
         }
-        public async Task UploadProfile(
+        public async Task<SnowProfileEntity> UploadProfile(
             string name,
             MemoryStream memoryStream,
             MemoryStream? plotStream,
@@ -50,6 +50,7 @@ namespace SnowProfileScanner.Services
 
             TableOperation insertOperation = TableOperation.Insert(snowProfileEntity);
             await table.ExecuteAsync(insertOperation);
+            return snowProfileEntity;
         }
 
         private static async Task<BlobClient> UploadImage(

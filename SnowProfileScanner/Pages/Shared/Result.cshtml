@@ -1,60 +1,77 @@
-﻿@model SnowProfileScanner.Models.SnowProfile
-<h2>Air Temperature: @Model.AirTemp</h2>
+﻿@model SnowProfileScanner.Models.SnowProfileEntity
 
-<h3>Snow Profile</h3>
-@if (Model.Layers.Any())
-{
-    <table class="styled-table">
-        <thead>
-            <tr>
-                <th>Thickness</th>
-                <th>LWC</th>
-                <th>Hardness</th>
-                <th>Grain</th>
-                <th>Size</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var snowProfile in Model.Layers)
-            {
-                <tr>
-                    <td>@snowProfile.Thickness</td>
-                    <td>@snowProfile.LWC</td>
-                    <td>@snowProfile.Hardness</td>
-                    <td>@snowProfile.Grain@(@snowProfile.GrainSecondary is not null ? "(" + snowProfile.GrainSecondary + ")" : "")</td>
-                    <td>@snowProfile.Size@(@snowProfile.SizeMax is not null ? "-" + @snowProfile.SizeMax : "")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>No snow profiles found.</p>
-}
-
-<h3>Snow Temperatures</h3>
-@if (Model.SnowTemp.Any())
-{
-    <table class="styled-table">
-        <thead>
-            <tr>
-                <th>Depth</th>
-                <th>Temperature</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var snowTemperature in Model.SnowTemp)
-            {
-                <tr>
-                    <td>@snowTemperature.Depth</td>
-                    <td>@snowTemperature.Temp</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>No snow temperatures found.</p>
-}
+<div class="text-center">
+    <h4>Observatør: @Model.Name</h4>
+    <img src=@Model.PlotUrl alt="Snø profil" />
+</div>
+<div class="content"> 
+    <div class="Snowprofile">
+        <div class="text-center">
+            <h4>Snøprofil</h4>
+        </div>
+        
+        @if (Model.SnowProfile.Layers.Any())
+        {
+           
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>Tykkelse</th>
+                        <th>Snøfuktighet</th>
+                        <th>Hardhet</th>
+                        <th>Kornform</th>
+                        <th>Størrelse</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var snowProfile in Model.SnowProfile.Layers)
+                    {
+                        <tr>
+                            <td>@snowProfile.Thickness</td>
+                            <td>@snowProfile.LWC</td>
+                            <td>@snowProfile.Hardness</td>
+                            <td>@snowProfile.Grain@(@snowProfile.GrainSecondary is not null ? "(" + snowProfile.GrainSecondary + ")" : "")</td>
+                            <td>@snowProfile.Size@(@snowProfile.SizeMax is not null ? "-" + @snowProfile.SizeMax : "")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>Ingen snøprofil funnet.</p>
+        }
+        
+        @if (Model.SnowProfile.SnowTemp.Any())
+        {
+            <br />
+            <table class="styled-table">
+                <thead>
+                   
+                    <tr>
+                        <th>Dybde (cm) </th>
+                        <th>Temperatur (°C)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Luft (1,5m)</strong></td>
+                        <td>@Model.SnowProfile.AirTemp</td>
+                    </tr>
+                    @foreach (var snowTemperature in Model.SnowProfile.SnowTemp)
+                    {
+                        <tr>
+                            <td>@snowTemperature.Depth</td>
+                            <td>@snowTemperature.Temp</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>Ingen snø temperaturer funnet.</p>
+        }
+    </div>
+    <img class="upload" src=@Model.ImageUrl alt="Bilde tatt av brukeren" />
+</div>
