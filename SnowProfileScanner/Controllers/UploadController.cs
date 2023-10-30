@@ -92,6 +92,7 @@ public class UploadController : Controller
             .Select(
                 group => group.ToList().Select(cell => ToDouble(
                     cell.Content
+                        // Strip "T" since some observers prefixes temperature depths with T
                         .Replace("T", String.Empty)
                 ))
             );
