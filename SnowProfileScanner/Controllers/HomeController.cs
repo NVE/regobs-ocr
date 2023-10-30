@@ -21,6 +21,10 @@ namespace SnowProfileScanner.Controllers
         public async Task<IActionResult> ViewAllEntries()
         {
             List<SnowProfileEntity> results = await _snowProfileService.GetAll();
+            results = results
+                .OrderBy(r => ((ITableEntity)r).Timestamp)
+                .Reverse()
+                .ToList();
 
             return View("ViewAllResults", results);
         }

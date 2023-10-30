@@ -1,4 +1,5 @@
-﻿@model IEnumerable<SnowProfileScanner.Models.SnowProfileEntity>
+﻿@using Microsoft.WindowsAzure.Storage.Table;
+@model IEnumerable<SnowProfileScanner.Models.SnowProfileEntity>
 @{
     Layout = null;
 }
@@ -17,24 +18,27 @@
     <thead>
         <tr>
             <th>Name</th>
+            <th>Time</th>
             <th></th>
         </tr>
     </thead>
         <tbody>
         @foreach (var entry in Model)
         {
-                <tr class=@(string.IsNullOrEmpty(entry.PlotUrl) ? "red-background" : "clickable-row")>
-                    <td style="width: 60%;">@entry.Name</td>
-                    <td style="width: 40%;"><a href="@Url.Action("ShowProfile", "Home", new { id = entry.RowKey })">View upload</a></td>
+            <tr class=@(string.IsNullOrEmpty(entry.PlotUrl) ? "red-background" : "clickable-row")>
+                <td style="width: 40%;">@entry.Name</td>
+                <td style="width: 20%;">
+                    @(((ITableEntity)entry).Timestamp.ToLocalTime().DateTime.ToString("s").Replace("T", " "))
+                </td>
+                <td style="width: 20%;"><a href="@Url.Action("ShowProfile", "Home", new { id = entry.RowKey })">View upload</a></td>
             </tr>
-                <tr class="hidden-row">     
-                    <td style="width: 60%; text-align: center;">
-                        <img src="@entry.ImageUrl" alt="Uploaded Image" style="max-width: 100%; height: auto;">
-                    </td>
-                    <td style="width: 40%; text-align: center;">
-                        <img src="@entry.PlotUrl" alt="Uploaded Plot" style="max-width: 100%; height: auto;">
-                    </td>
-
+            <tr class="hidden-row">
+                <td style="width: 60%; text-align: center;">
+                    <img src="@entry.ImageUrl" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+                </td>
+                <td style="width: 40%; text-align: center;" colspan="2">
+                    <img src="@entry.PlotUrl" alt="Uploaded Plot" style="max-width: 100%; height: auto;">
+                </td>
             </tr>
         }
         </tbody>
