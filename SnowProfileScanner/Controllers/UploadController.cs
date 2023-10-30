@@ -90,7 +90,11 @@ public class UploadController : Controller
             .Where(cell => cell.RowIndex > 1 && !string.IsNullOrWhiteSpace(cell.Content))
             .GroupBy(cell => cell.RowIndex)
             .Select(
-                group => group.ToList().Select(cell => ToDouble(cell.Content))
+                group => group.ToList().Select(cell => ToDouble(
+                    cell.Content
+                        // Strip "T" since some observers prefixes temperature depths with T
+                        .Replace("T", String.Empty)
+                ))
             );
         double? previousDepth = null;
         var temps = new List<SnowProfile.SnowTemperature>();
@@ -99,6 +103,7 @@ public class UploadController : Controller
             var tempTuple = new SnowProfile.SnowTemperature() { };
 
             var d = row.ElementAtOrDefault(0);
+            d = d is not null ? Math.Abs(d.Value) : null;
             if (d >= 0 && (previousDepth is null || previousDepth < d))
             {
                 previousDepth = d;
@@ -128,26 +133,51 @@ public class UploadController : Controller
             var lwc = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 1))
                 .ToUpper()
                 .Replace("O", "D")
+                .Replace("C", "D")
                 .Replace("P", "D")
-                .Replace("0", "D");
+                .Replace("0", "D")
+                .Replace(" ", string.Empty);
+            lwc = VALID_LWC
+                .Where(vlwc => vlwc.Length <= lwc.Length && vlwc == lwc[..vlwc.Length])
+                .OrderBy(vlwc => -vlwc.Length)
+                .FirstOrDefault();
 
             var hardness = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 2))
                 .ToUpper()
                 .Replace("IF", "1F")
+                .Replace("LF", "1F")
+                .Replace("|F", "1F")
+                .Replace("X", "K")
                 .Replace("O", "P")
                 .Replace("D", "P")
-                .Replace("0", "P");
+                .Replace("0", "P")
+                .Replace(" ", string.Empty) ?? string.Empty;
+            hardness = VALID_HARDNESS
+                .Where(vh => vh.Length <= hardness.Length && vh == hardness[..vh.Length])
+                .OrderBy(vh => -vh.Length)
+                .FirstOrDefault();
 
             var grainTypeText = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 3))
                 .Replace("t", "f")
+                .Replace("I", "l")
+                .Replace("1", "l")
+                .Replace("|", "l")
                 .ToUpper()
-                .Replace("1F", "IF");
-            var grainType = grainTypeText.GetPrimaryGrainForm();
-            if (grainType.Count() == 4)
+                .Replace("LF", "IF")
+                .Replace("KR", "XR")
+                .Replace("KF", "XF")
+                .Replace("\\", "/")
+                .Replace(" ", string.Empty) ?? string.Empty;
+            grainTypeText = VALID_GRAINTYPE
+                .Where(vg => vg.Length <= grainTypeText.Length && vg.ToUpper() == grainTypeText[..vg.Length])
+                .OrderBy(vg => -vg.Length)
+                .FirstOrDefault();
+            var grainType = grainTypeText?.GetPrimaryGrainForm();
+            if (grainType?.Count() == 4)
             {
                 grainType = grainType.Substring(0, 2) + grainType.Substring(2).ToLower();
             }
-            var grainTypeSec = grainTypeText.GetSecondaryGrainForm();
+            var grainTypeSec = grainTypeText?.GetSecondaryGrainForm();
             if (grainTypeSec is not null && grainTypeSec.Count() == 4)
             {
                 grainTypeSec = grainTypeSec.Substring(0, 2) + grainTypeSec.Substring(2).ToLower();
@@ -155,7 +185,7 @@ public class UploadController : Controller
 
 
             var grainSizeText = row.SingleOrDefault(cell => cell.ColumnIndex == 4)?.Content ?? "";
-            var grainSizeSplit = grainSizeText.Split("-");
+            var grainSizeSplit = grainSizeText.Split(new Char[] { '-', '–', '—', '_' });
             var grainSize = ToDouble(grainSizeSplit.First());
             double? grainSizeMax = null;
             if (grainSize is not null && grainSizeSplit.Length > 1)
@@ -166,10 +196,10 @@ public class UploadController : Controller
             var snowProfile = new SnowProfile.Layer
             {
                 Thickness = thickness > 0 ? thickness : null,
-                LWC = VALID_LWC.Contains(lwc) ? lwc : null,
-                Hardness = VALID_HARDNESS.Contains(hardness) ? hardness : null,
-                Grain = VALID_GRAINTYPE.Contains(grainType) ? grainType : null,
-                GrainSecondary = VALID_GRAINTYPE.Contains(grainTypeSec) ? grainTypeSec : null,
+                LWC = lwc,
+                Hardness = hardness,
+                Grain = grainType,
+                GrainSecondary = grainTypeSec,
                 Size = grainSize > 0 && grainSize < 40 ? grainSize : null,
                 SizeMax = grainSizeMax > 0 && grainSizeMax < 40 && grainSizeMax > grainSize
                     ? grainSizeMax : null,
@@ -251,11 +281,19 @@ public class UploadController : Controller
     private static double? ToDouble(string? s)
     {
         var sReplaced = s?
+            .Replace("Overflate", "0")
+            .Replace("l", "1")
+            .ToUpper()
+            .Replace("|", "1")
+            .Replace("I", "1")
             .Replace(" ", string.Empty)
             .Replace(",", ".")
-            .Replace("Overflate", "0")
-            .Replace("I", "1")
-            .Replace("l", "1");
+            .Replace("–", "-")
+            .Replace("—", "-")
+            .Replace("_", "-")
+            .Replace("O", "0")
+            .Replace("Z", "2")
+            .Replace("G", "6");
         return double.TryParse(sReplaced, out var d) ? d : null;
     }
 

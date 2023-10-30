@@ -77,14 +77,13 @@ namespace SnowProfileScanner.Services.Caaml
                 if (!string.IsNullOrEmpty(layer.Grain))
                 {
                     doc.CreateChild("grainFormPrimary", layerEl)
-                        .SetInnerText(layer.Grain.GetPrimaryGrainForm());
+                        .SetInnerText(layer.Grain);
                 }
 
-                var secGrain = layer?.Grain?.GetSecondaryGrainForm();
-                if (!string.IsNullOrEmpty(secGrain))
+                if (!string.IsNullOrEmpty(layer.GrainSecondary))
                 {
                     doc.CreateChild("grainFormSecondary", layerEl)
-                        .SetInnerText(secGrain);
+                        .SetInnerText(layer.GrainSecondary);
                 }
 
                 if (layer?.Size > 0)
@@ -132,6 +131,7 @@ namespace SnowProfileScanner.Services.Caaml
             var tempObsMetadata = doc.CreateChild("tempMetaData", tempObsTag);
             foreach (var tempObs in tempObses)
             {
+                if (tempObs.Depth is null || tempObs.Temp is null) continue;
                 var obsTag = doc.CreateChild("Obs", tempObsTag);
                 doc
                     .CreateChild("depth", obsTag)
