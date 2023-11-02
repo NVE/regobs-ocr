@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<SnowProfileService>();
+builder.Services.AddScoped<SymbolRecognitionService>();
 builder.Services.AddHttpClient();
 var app = builder.Build();
 
