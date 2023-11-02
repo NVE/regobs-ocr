@@ -1,5 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Azure.CognitiveServices.Vision.CustomVision.Prediction;
+using Newtonsoft.Json;
 using SnowProfileScanner.Models;
+using System.Net.Http.Headers;
 
 namespace SnowProfileScanner.Services
 {
@@ -7,35 +9,29 @@ namespace SnowProfileScanner.Services
     {
         private string url, predictionKey;
         private ILogger logger;
+        private CustomVisionPredictionClient predictionClient;
 
         public SymbolRecognitionService(IConfiguration configuration, ILogger<SymbolRecognitionService> logger)
         {
             url = configuration["CustomVisionUrl"];
             predictionKey = configuration["CustomVisionPredictionKey"];
             this.logger = logger;
+            predictionClient = AuthenticatePrediction(url, predictionKey);
         }
 
-        public async Task<string> ClassifyImage(byte[] image)
+        public async Task<string> ClassifyImage(Stream image)
         {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Content-Type", "application/octet-stream");
-            client.DefaultRequestHeaders.Add("Prediction-Key", predictionKey);
-            var body = new ByteArrayContent(image);
-            HttpResponseMessage response = await client.PostAsync(url, body);
-            if (response.StatusCode.Equals(200))
+            var value = await predictionClient.DetectImageAsync(new Guid("e05d2a8c-6fd0-4c44-820b-e9aa43785aae"), "Regobs-Image-Recognition", image);
+            return value.Predictions[0].TagName;
+        }
+        private static CustomVisionPredictionClient AuthenticatePrediction(string endpoint, string predictionKey)
+        {
+            // Create a prediction endpoint, passing in the obtained prediction key
+            CustomVisionPredictionClient predictionApi = new CustomVisionPredictionClient(new Microsoft.Azure.CognitiveServices.Vision.CustomVision.Prediction.ApiKeyServiceClientCredentials(predictionKey))
             {
-                var result = JsonConvert.DeserializeObject <ICustomVistionDecodeResult> (response.Content.ToString());
-                logger.LogDebug("ClassifyImage: Fikk OK" + response.StatusCode, result);
-                if (result.predictions.Length > 0) {
-                    var prediction = result.predictions[0];
-                    return prediction.TagName;
-                }
-                return ":-|";
-            } else
-            {
-                logger.LogError("ClassifyImage: Fikk HTTP-respons-kode: " + response.StatusCode);
-                return ":-(";
-            }
+                Endpoint = endpoint
+            };
+            return predictionApi;
         }
     }
 }

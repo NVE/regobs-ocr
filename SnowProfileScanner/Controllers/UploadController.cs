@@ -14,12 +14,15 @@ using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Formats;
 using System.IO;
+using System.Runtime.InteropServices;
+using SixLabors.ImageSharp.Advanced;
 
 public class UploadController : Controller
 {
 
     private readonly IConfiguration _configuration;
     private readonly SnowProfileService _snowProfileService;
+    private readonly SymbolRecognitionService _symbolRecognitionService;
     private readonly HttpClient _httpClient;
     private const string RECAPTCHA_URL = "https://www.google.com/recaptcha/api/siteverify";
     private static readonly HashSet<string> VALID_LWC = ValidLwc();
@@ -31,11 +34,13 @@ public class UploadController : Controller
     public UploadController(
         IConfiguration configuration,
         SnowProfileService snowProfileService,
-        HttpClient httpClient
+        HttpClient httpClient,
+        SymbolRecognitionService symbolService
     ) {
         _httpClient = httpClient;
         _configuration = configuration;
         _snowProfileService = snowProfileService;
+        _symbolRecognitionService = symbolService;
     }
 
     public IActionResult Index()
@@ -78,7 +83,7 @@ public class UploadController : Controller
         var snowProfile = new SnowProfile
         {
             SnowTemp = numberOfTables > 1 ? DecodeSnowTemperature(result.Tables[1]) : new(),
-            Layers = numberOfTables > 0 ? DecodeSnowProfile(image, result.Tables[0]) : new(),
+            Layers = numberOfTables > 0 ? await DecodeSnowProfile(image, result.Tables[0]) : new(),
             AirTemp = numberOfTables > 1 ? DecodeAirTemperature(result.Tables[1]) : null,
         };
 
@@ -143,7 +148,7 @@ public class UploadController : Controller
         return temps;
     }
 
-    private List<SnowProfile.Layer> DecodeSnowProfile(Image<Rgba32> image, DocumentTable tbl1)
+    private async Task<List<SnowProfile.Layer>> DecodeSnowProfile(Image<Rgba32> image, DocumentTable tbl1)
     {
         var snowProfiles = new List<SnowProfile.Layer>();
         var rowsCount = tbl1.Cells
@@ -209,8 +214,14 @@ public class UploadController : Controller
             {
                 var polygon = grainCell.BoundingRegions[0].BoundingPolygon;
                 var croppedImage = CropImageToBoundingBox(image, polygon);
-                var filePath = Path.Combine(imagesDirectory, $"CroppedImage_Cell_{rowIndex}.png");
-                croppedImage.Save(filePath);
+                var _IMemoryGroup = croppedImage.GetPixelMemoryGroup();
+                var _MemoryGroup = _IMemoryGroup.ToArray()[0];
+                var PixelData = MemoryMarshal.AsBytes(_MemoryGroup.Span).ToArray();
+
+               MemoryStream stream = new MemoryStream(PixelData);
+                grainTypeText = await _symbolRecognitionService.ClassifyImage(stream);
+                //var filePath = Path.Combine(imagesDirectory, $"CroppedImage_Cell_{rowIndex}.png");
+                //croppedImage.Save(filePath);
             }
                 
             var grainType = grainTypeText?.GetPrimaryGrainForm();
