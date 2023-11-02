@@ -16,6 +16,7 @@ using SixLabors.ImageSharp.Formats;
 using System.IO;
 using System.Runtime.InteropServices;
 using SixLabors.ImageSharp.Advanced;
+using Microsoft.AspNetCore.WebUtilities;
 
 public class UploadController : Controller
 {
@@ -214,11 +215,9 @@ public class UploadController : Controller
             {
                 var polygon = grainCell.BoundingRegions[0].BoundingPolygon;
                 var croppedImage = CropImageToBoundingBox(image, polygon);
-                var _IMemoryGroup = croppedImage.GetPixelMemoryGroup();
-                var _MemoryGroup = _IMemoryGroup.ToArray()[0];
-                var PixelData = MemoryMarshal.AsBytes(_MemoryGroup.Span).ToArray();
-
-               MemoryStream stream = new MemoryStream(PixelData);
+                var stream = new MemoryStream();
+                croppedImage.SaveAsPng(stream); // Save the image to the stream in PNG format
+                stream.Position = 0;
                 grainTypeText = await _symbolRecognitionService.ClassifyImage(stream);
                 //var filePath = Path.Combine(imagesDirectory, $"CroppedImage_Cell_{rowIndex}.png");
                 //croppedImage.Save(filePath);

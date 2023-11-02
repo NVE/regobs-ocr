@@ -19,9 +19,9 @@ namespace SnowProfileScanner.Services
             predictionClient = AuthenticatePrediction(url, predictionKey);
         }
 
-        public async Task<string> ClassifyImage(Stream image)
+        public async Task<string> ClassifyImage(MemoryStream image)
         {
-            var value = await predictionClient.DetectImageAsync(new Guid("e05d2a8c-6fd0-4c44-820b-e9aa43785aae"), "Regobs-Image-Recognition", image);
+            var value = await predictionClient.ClassifyImageAsync(Guid.Parse("e05d2a8c-6fd0-4c44-820b-e9aa43785aae"), "Iteration2", image);
             return value.Predictions[0].TagName;
         }
         private static CustomVisionPredictionClient AuthenticatePrediction(string endpoint, string predictionKey)
