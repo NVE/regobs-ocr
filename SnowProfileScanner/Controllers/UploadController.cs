@@ -99,6 +99,7 @@ public class UploadController : Controller
 
     private Image<Rgba32> CropImageToBoundingBox(Image<Rgba32> image, IReadOnlyList<System.Drawing.PointF> boundingBox)
     {
+        image.Mutate(x => x.AutoOrient());
         var rectangle = ConvertBoundingBoxToRectangle(boundingBox);
         return image.Clone(x => x.Crop(rectangle));
     }
