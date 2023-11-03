@@ -155,13 +155,7 @@ public class UploadController : Controller
         var rowsCount = tbl1.Cells
             .Where(cell => cell.ColumnIndex == 0 && !string.IsNullOrWhiteSpace(cell.Content))
             .Max(cell => cell.RowIndex);
-        
-        string imagesDirectory = Path.Combine("C:/NVE/Prosjektmappe/Regobs-ocr", "CroppedImages");
 
-        if (!Directory.Exists(imagesDirectory))
-        {
-            Directory.CreateDirectory(imagesDirectory);
-        }
         for (int rowIndex = 1; rowIndex <= rowsCount; rowIndex++)
         {
             var row = tbl1.Cells.Where(cell => cell.RowIndex == rowIndex);
@@ -219,8 +213,6 @@ public class UploadController : Controller
                 croppedImage.SaveAsPng(stream); // Save the image to the stream in PNG format
                 stream.Position = 0;
                 grainTypeText = await _symbolRecognitionService.ClassifyImage(stream);
-                //var filePath = Path.Combine(imagesDirectory, $"CroppedImage_Cell_{rowIndex}.png");
-                //croppedImage.Save(filePath);
             }
                 
             var grainType = grainTypeText?.GetPrimaryGrainForm();
