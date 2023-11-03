@@ -7,7 +7,7 @@ namespace SnowProfileScanner.Services
 {
     public class SymbolRecognitionService
     {
-        private string url, predictionKey;
+        private string url, predictionKey, projectId;
         private ILogger logger;
         private CustomVisionPredictionClient predictionClient;
 
@@ -15,14 +15,28 @@ namespace SnowProfileScanner.Services
         {
             url = configuration["CustomVisionUrl"];
             predictionKey = configuration["CustomVisionPredictionKey"];
+            projectId = configuration["CustomVisionProjectId"];
+
             this.logger = logger;
             predictionClient = AuthenticatePrediction(url, predictionKey);
         }
 
         public async Task<string> ClassifyImage(MemoryStream image)
         {
-            var value = await predictionClient.ClassifyImageAsync(Guid.Parse("e05d2a8c-6fd0-4c44-820b-e9aa43785aae"), "Iteration2", image);
-            return value.Predictions[0].TagName;
+            var value = await predictionClient.ClassifyImageAsync(Guid.Parse(projectId), "Iteration2", image);
+            if (value.Predictions[0].Probability > 0.30)
+            {
+                if(value.Predictions[0].TagName == "MDcr")
+                {
+                    return "MFcr";
+                }
+                return value.Predictions[0].TagName;
+            }
+            else
+            {
+                return null;
+            }
+            
         }
         private static CustomVisionPredictionClient AuthenticatePrediction(string endpoint, string predictionKey)
         {
