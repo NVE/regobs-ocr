@@ -23,7 +23,7 @@ namespace SnowProfileScanner.Services
 
         public async Task<string> ClassifyImage(MemoryStream image)
         {
-            var value = await predictionClient.ClassifyImageAsync(Guid.Parse(projectId), "Iteration3", image);
+            var value = await predictionClient.ClassifyImageAsync(Guid.Parse(projectId), "Iteration5", image);
             if (value.Predictions[0].Probability > 0.30)
             {
                 return value.Predictions[0].TagName;
