@@ -80,7 +80,7 @@ public class UploadController : Controller
         var numberOfTables = result.Tables.Count();
 
         Image<Rgba32> image = Image.Load<Rgba32>(memoryStream.ToArray());
-
+        image.Mutate(x => x.AutoOrient());
         var snowProfile = new SnowProfile
         {
             SnowTemp = numberOfTables > 1 ? DecodeSnowTemperature(result.Tables[1]) : new(),
@@ -99,7 +99,6 @@ public class UploadController : Controller
 
     private Image<Rgba32> CropImageToBoundingBox(Image<Rgba32> image, IReadOnlyList<System.Drawing.PointF> boundingBox)
     {
-        image.Mutate(x => x.AutoOrient());
         var rectangle = ConvertBoundingBoxToRectangle(boundingBox);
         return image.Clone(x => x.Crop(rectangle));
     }
