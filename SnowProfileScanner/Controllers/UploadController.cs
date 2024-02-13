@@ -95,28 +95,29 @@ public class UploadController : Controller
         return View("Result", snowProfileEntity);
     }
 
-  
-
-    private Image<Rgba32> CropImageToBoundingBox(Image<Rgba32> image, IReadOnlyList<System.Drawing.PointF> boundingBox)
-    {
-        var rectangle = ConvertBoundingBoxToRectangle(boundingBox);
-        return image.Clone(x => x.Crop(rectangle));
-    }
 
 
-    private Rectangle ConvertBoundingBoxToRectangle(IReadOnlyList<System.Drawing.PointF> boundingBox)
-    {
-
-        var topLeft = new Point((int)boundingBox[0].X, (int)boundingBox[0].Y);
-        var bottomRight = new Point((int)boundingBox[2].X, (int)boundingBox[2].Y);
-        var width = bottomRight.X - topLeft.X;
-        var height = bottomRight.Y - topLeft.Y;
-        return new Rectangle(topLeft.X, topLeft.Y, width, height);
-    }
+	private Image<Rgba32> CropImageToBoundingBox(Image<Rgba32> image, IReadOnlyList<System.Drawing.PointF> boundingBox)
+	{
+		image.Mutate(x => x.AutoOrient());
+		var rectangle = ConvertBoundingBoxToRectangle(boundingBox);
+		return image.Clone(x => x.Crop(rectangle));
+	}
 
 
+	private Rectangle ConvertBoundingBoxToRectangle(IReadOnlyList<System.Drawing.PointF> boundingBox)
+	{
 
-    private List<SnowProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
+		var topLeft = new Point((int)boundingBox.Select(p => p.X).Min(), (int)boundingBox.Select(p => p.Y).Min());
+		var bottomRight = new Point((int)boundingBox.Select(p => p.X).Max(), (int)boundingBox.Select(p => p.Y).Max());
+		var width = bottomRight.X - topLeft.X;
+		var height = bottomRight.Y - topLeft.Y;
+		return new Rectangle(topLeft.X, topLeft.Y, width, height);
+	}
+
+
+
+	private List<SnowProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
     {
         var rows = tbl1.Cells
             .Where(cell => cell.RowIndex > 1 && !string.IsNullOrWhiteSpace(cell.Content))
