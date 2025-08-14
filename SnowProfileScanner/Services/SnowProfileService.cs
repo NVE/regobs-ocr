@@ -22,14 +22,16 @@ namespace SnowProfileScanner.Services
         ) {
             using var uploadStream = new MemoryStream(memoryStream.ToArray());
             string connectionString = _configuration["AzureStorageConnectionString"];
+            string tableName = _configuration["SnowProfileTableName"];
+            string containerName = _configuration["SnowProfilePicturesContainerName"];
 
-            BlobClient blobClient = await UploadImage(uploadStream, connectionString, "image/jpeg");
+            BlobClient blobClient = await UploadImage(uploadStream, connectionString, "image/jpeg", containerName);
             BlobClient? plotClient = null;
 
             if (plotStream is not null)
             {
                 using MemoryStream uploadPlotStream = new(plotStream.ToArray());
-                plotClient = await UploadImage(uploadPlotStream, connectionString, "image/png");
+                plotClient = await UploadImage(uploadPlotStream, connectionString, "image/png", containerName);
             }
 
             var snowProfileEntity = new SnowProfileEntity
@@ -45,7 +47,7 @@ namespace SnowProfileScanner.Services
             // Save snowProfileEntity to Azure Table Storage
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference("SnowProfiles");
+            CloudTable table = tableClient.GetTableReference(tableName);
             await table.CreateIfNotExistsAsync();
 
             TableOperation insertOperation = TableOperation.Insert(snowProfileEntity);
@@ -56,9 +58,9 @@ namespace SnowProfileScanner.Services
         private static async Task<BlobClient> UploadImage(
             MemoryStream uploadStream,
             string connectionString,
-            string contentType
+            string contentType,
+            string containerName
         ) {
-            string containerName = "snowprofilepictures";
             BlobServiceClient blobServiceClient = new BlobServiceClient(connectionString);
             BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
 
@@ -82,7 +84,7 @@ namespace SnowProfileScanner.Services
             string connectionString = _configuration["AzureStorageConnectionString"];
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference("SnowProfiles");
+            CloudTable table = tableClient.GetTableReference("SnowProfilesAT");
 
             await table.CreateIfNotExistsAsync();
 
@@ -97,7 +99,7 @@ namespace SnowProfileScanner.Services
             string connectionString = _configuration["AzureStorageConnectionString"];
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference("SnowProfiles");
+            CloudTable table = tableClient.GetTableReference("SnowProfilesAT");
 
             await table.CreateIfNotExistsAsync();
 

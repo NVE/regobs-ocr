@@ -17,6 +17,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using SixLabors.ImageSharp.Advanced;
 using Microsoft.AspNetCore.WebUtilities;
+using System.Text.RegularExpressions;
 
 public class UploadController : Controller
 {
@@ -72,7 +73,8 @@ public class UploadController : Controller
         await file.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
 
-        AnalyzeDocumentOperation operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, "KodedagModel", memoryStream);
+        var options = new AnalyzeDocumentOptions() { Locale = "de" };
+        AnalyzeDocumentOperation operation = await client.AnalyzeDocumentAsync(WaitUntil.Completed, "prebuilt-layout", memoryStream, options);
         await operation.WaitForCompletionAsync();
 
         AnalyzeResult result = operation.Value;
@@ -81,10 +83,11 @@ public class UploadController : Controller
 
         Image<Rgba32> image = Image.Load<Rgba32>(memoryStream.ToArray());
         image.Mutate(x => x.AutoOrient());
+
         var snowProfile = new SnowProfile
         {
             SnowTemp = numberOfTables > 1 ? DecodeSnowTemperature(result.Tables[1]) : new(),
-            Layers = numberOfTables > 0 ? await DecodeSnowProfile(image, result.Tables[0]) : new(),
+            Layers = numberOfTables > 0 ? await DecodeSnowProfile(image, result) : new(),
             AirTemp = numberOfTables > 1 ? DecodeAirTemperature(result.Tables[1]) : null,
         };
 
@@ -94,7 +97,6 @@ public class UploadController : Controller
 
         return View("Result", snowProfileEntity);
     }
-
 
 
 	private Image<Rgba32> CropImageToBoundingBox(Image<Rgba32> image, IReadOnlyList<System.Drawing.PointF> boundingBox)
@@ -150,85 +152,119 @@ public class UploadController : Controller
         return temps;
     }
 
-    private async Task<List<SnowProfile.Layer>> DecodeSnowProfile(Image<Rgba32> image, DocumentTable tbl1)
+    private class ParsedText
+    {
+        public IEnumerable<BoundingRegion> BoundingRegions { get; set; }
+        public string Content { get; set; }
+    }
+
+    private async Task<List<SnowProfile.Layer>> DecodeSnowProfile(Image<Rgba32> image, AnalyzeResult result)
     {
         var snowProfiles = new List<SnowProfile.Layer>();
+
+        var tbl1 = result.Tables[0];
+        int col1 = -1;
+        foreach (var cell in tbl1.Cells)
+        {
+            if (cell.Content.ToLower().Contains("schneehöhe"))
+            {
+                col1 = cell.ColumnIndex + 1;
+                break;
+            }
+            if (cell.Content.ToLower().Contains("feuchte"))
+            {
+                col1 = cell.ColumnIndex;
+                break;
+            }
+            if (cell.Content.ToLower().Contains("kornform"))
+            {
+                col1 = cell.ColumnIndex - 1;
+                break;
+            }
+            if (cell.Content.ToLower().Contains("härte"))
+            {
+                col1 = cell.ColumnIndex - 2;
+                break;
+            }
+        }
+        if (col1 == -1) return snowProfiles;
+
+
+        IEnumerable<ParsedText> depthCells;
+        if (col1 >= 1)
+        {
+            depthCells = tbl1.Cells
+                .Where(cell => cell.ColumnIndex == col1 - 1)
+                .Select(cell => new ParsedText() { BoundingRegions = cell.BoundingRegions, Content = cell.Content });
+        } else
+        {
+            var depthTitle = result.Paragraphs.Where(p => p.Content.ToLower().Contains("schneehöhe")).FirstOrDefault();
+            if (depthTitle == null) return snowProfiles;
+
+            var depthTitleXmin = depthTitle.BoundingRegions.First().BoundingPolygon.Select(r => r.X).Min();
+            var depthTitleXmax = depthTitle.BoundingRegions.First().BoundingPolygon.Select(r => r.X).Max();
+            depthCells = result.Paragraphs.Where(p =>
+            {
+                var depthPX = p.BoundingRegions.First().BoundingPolygon.Select(r => r.X).Average();
+                return depthTitleXmin <= depthPX && depthTitleXmax > depthPX;
+            })
+            .Select(p => new ParsedText() { BoundingRegions = p.BoundingRegions, Content = p.Content });
+        }
+
         var rowsCount = tbl1.Cells
-            .Where(cell => cell.ColumnIndex == 0 && !string.IsNullOrWhiteSpace(cell.Content))
+            .Where(cell => !string.IsNullOrWhiteSpace(cell.Content))
             .Max(cell => cell.RowIndex);
 
-        for (int rowIndex = 1; rowIndex <= rowsCount; rowIndex++)
+        double? previousDepth = null;
+        for (int rowIndex = 0; rowIndex <= rowsCount; rowIndex++)
         {
-            var row = tbl1.Cells.Where(cell => cell.RowIndex == rowIndex);
-
-            var thickness = ToDouble(row.SingleOrDefault(cell => cell.ColumnIndex == 0)?.Content);
-
-            var lwc = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 1))
-                .ToUpper()
-                .Replace("O", "D")
-                .Replace("C", "D")
-                .Replace("P", "D")
-                .Replace("0", "D")
-                .Replace(" ", string.Empty);
-            lwc = VALID_LWC
-                .Where(vlwc => vlwc.Length <= lwc.Length && vlwc == lwc[..vlwc.Length])
-                .OrderBy(vlwc => -vlwc.Length)
+            var grainSizeCell = tbl1.Cells
+                .Where(cell => cell.RowIndex == rowIndex && cell.ColumnIndex == col1 + 2 && !String.IsNullOrEmpty(cell.Content))
                 .FirstOrDefault();
-
-            var hardness = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 2))
-                .ToUpper()
-                .Replace("IF", "1F")
-                .Replace("LF", "1F")
-                .Replace("|F", "1F")
-                .Replace("X", "K")
-                .Replace("O", "P")
-                .Replace("D", "P")
-                .Replace("0", "P")
-                .Replace(" ", string.Empty) ?? string.Empty;
-            hardness = VALID_HARDNESS
-                .Where(vh => vh.Length <= hardness.Length && vh == hardness[..vh.Length])
-                .OrderBy(vh => -vh.Length)
-                .FirstOrDefault();
-
-            var grainCell = row.SingleOrDefault(cell => cell.ColumnIndex == 3);
-            var grainTypeText = ToString(grainCell)
-                .Replace("t", "f")
-                .Replace("I", "l")
-                .Replace("1", "l")
-                .Replace("|", "l")
-                .ToUpper()
-                .Replace("LF", "IF")
-                .Replace("KR", "XR")
-                .Replace("KF", "XF")
-                .Replace("\\", "/")
-                .Replace(" ", string.Empty) ?? string.Empty;
-            grainTypeText = VALID_GRAINTYPE
-                .Where(vg => vg.Length <= grainTypeText.Length && vg.ToUpper() == grainTypeText[..vg.Length])
-                .OrderBy(vg => -vg.Length)
-                .FirstOrDefault();
-            if (grainTypeText == null || grainTypeText == string.Empty)
+            if (grainSizeCell is null) continue;
+            var grainSizeCellYs = grainSizeCell.BoundingRegions.First().BoundingPolygon.Select(r => r.Y);
+            var row = tbl1.Cells.Where(cell =>
             {
-                var polygon = grainCell.BoundingRegions[0].BoundingPolygon;
-                var croppedImage = CropImageToBoundingBox(image, polygon);
-                var stream = new MemoryStream();
-                croppedImage.SaveAsPng(stream); // Save the image to the stream in PNG format
-                stream.Position = 0;
-                grainTypeText = await _symbolRecognitionService.ClassifyImage(stream);
-            }
-                
-            var grainType = grainTypeText?.GetPrimaryGrainForm();
-            if (grainType?.Count() == 4)
-            {
-                grainType = grainType.Substring(0, 2) + grainType.Substring(2).ToLower();
-            }
-            var grainTypeSec = grainTypeText?.GetSecondaryGrainForm();
-            if (grainTypeSec is not null && grainTypeSec.Count() == 4)
-            {
-                grainTypeSec = grainTypeSec.Substring(0, 2) + grainTypeSec.Substring(2).ToLower();
-            }
-            
+                var cellYs = cell.BoundingRegions.First().BoundingPolygon.Select(r => r.Y);
+                var cellYmin = cellYs.Min();
+                var cellYmax = cellYs.Max();
+                return grainSizeCellYs.Average() >= cellYmin && grainSizeCellYs.Average() < cellYmax;
+            });
 
-            var grainSizeText = row.SingleOrDefault(cell => cell.ColumnIndex == 4)?.Content ?? "";
+            double? leftMostCellYmin = null, leftMostCellYmax = null;
+            for (int i = 0; i < 3; i++)
+            {
+                var leftMostCol = row.Where(c => c.ColumnIndex == col1);
+                if (leftMostCol.Count() == 0) continue;
+                leftMostCellYmin = leftMostCol.Select(c => c.BoundingRegions.First().BoundingPolygon[0].Y).Min();
+                leftMostCellYmax = leftMostCol.Select(c => c.BoundingRegions.First().BoundingPolygon[3].Y).Max();
+                break;
+            }
+
+            var depths = depthCells
+                .Where(cell =>
+                {
+                    var depthYs = cell.BoundingRegions.First().BoundingPolygon.Select(r => r.Y).ToArray();
+                    var depthYmin = depthYs[1];
+                    var depthYmax = depthYs[2];
+                    return leftMostCellYmin >= depthYmin && leftMostCellYmin <= depthYmax ||
+                           leftMostCellYmax >= depthYmin && leftMostCellYmax <= depthYmax;
+                })
+                .Select(cell => ToDouble(
+                    Regex.Replace(cell.Content, "[^0-9,.]", "")
+                        .Replace('.', ',')
+                ));
+            var thickness = depths.Max() - depths.Min();
+            if (thickness == 0 || depths.Max() >= previousDepth)
+            {
+                thickness = null;
+            } else
+            {
+                previousDepth = depths.Max();
+            }
+
+            var grainSizeText = Regex.Replace(grainSizeCell.Content ?? "", "[^0-9-–—_,.]", "")
+                .Replace('.', ',');
             var grainSizeSplit = grainSizeText.Split(new Char[] { '-', '–', '—', '_' });
             var grainSize = ToDouble(grainSizeSplit.First());
             double? grainSizeMax = null;
@@ -236,21 +272,103 @@ public class UploadController : Controller
             {
                 grainSizeMax = ToDouble(grainSizeSplit.Last());
             }
-            
 
-            var snowProfile = new SnowProfile.Layer
+            var lwc = row
+                .Where(cell => cell.ColumnIndex == col1)
+                .Select(cell => Regex.Replace(ToString(cell), "[^0-9-]", "")
+                    .Replace("1", "D")
+                    .Replace("2", "M")
+                    .Replace("3", "W")
+                    .Replace("4", "V")
+                    .Replace("5", "S"))
+                .Select(lwc => VALID_LWC
+                    .Where(vlwc => vlwc.Length <= lwc.Length && vlwc == lwc[..vlwc.Length])
+                    .OrderBy(vlwc => -vlwc.Length)
+                    .FirstOrDefault())
+                .Where(lwc => !String.IsNullOrEmpty(lwc))
+                .FirstOrDefault();
+
+            var hardness = row
+                .Where(cell => cell.ColumnIndex == col1 + 3)
+                .Select(cell => Regex.Replace(ToString(cell), "[^0-9-+]", "")
+                    .ToUpper()
+                    .Replace("1", "F")
+                    .Replace("3", "1F")
+                    .Replace("4", "P")
+                    .Replace("2", "4F")
+                    .Replace("5", "K")
+                    .Replace("6", "I")
+                    .Replace(" ", string.Empty) ?? string.Empty)
+                .Select(hardness => VALID_HARDNESS
+                    .Where(vh => vh.Length <= hardness.Length && vh == hardness[..vh.Length])
+                    .OrderBy(vh => -vh.Length)
+                    .FirstOrDefault())
+                .Where(hardness => !String.IsNullOrEmpty(hardness))
+                .FirstOrDefault();
+
+            var grainCells = row.Where(cell => cell.ColumnIndex == col1 + 1);
+            var grainTypeText = grainCells
+                .Select(cell => ToString(cell)
+                    .Replace("t", "f")
+                    .Replace("I", "l")
+                    .Replace("1", "l")
+                    .Replace("|", "l")
+                    .ToUpper()
+                    .Replace("LF", "IF")
+                    .Replace("KR", "XR")
+                    .Replace("KF", "XF")
+                    .Replace("\\", "/")
+                    .Replace(" ", string.Empty) ?? string.Empty)
+                .Select(grainTypeText => VALID_GRAINTYPE
+                    .Where(vg => vg.Length <= grainTypeText.Length && vg.ToUpper() == grainTypeText[..vg.Length])
+                    .OrderBy(vg => -vg.Length)
+                    .FirstOrDefault())
+                .Where(hardness => !String.IsNullOrEmpty(hardness))
+                .FirstOrDefault();
+            if (grainCells.Count() >= 0 && (grainTypeText == null || grainTypeText == string.Empty))
             {
-                Thickness = thickness > 0 ? thickness : null,
-                LWC = lwc,
-                Hardness = hardness,
-                Grain = grainType,
-                GrainSecondary = grainTypeSec,
-                Size = grainSize > 0 && grainSize < 40 ? grainSize : null,
-                SizeMax = grainSizeMax > 0 && grainSizeMax < 40 && grainSizeMax > grainSize
-                    ? grainSizeMax : null,
-            };
+                foreach (var grainCell in grainCells)
+                {
+                    var polygon = grainCell.BoundingRegions[0].BoundingPolygon;
+                    var croppedImage = CropImageToBoundingBox(image, polygon);
+                    using var stream = new MemoryStream();
+                    croppedImage.SaveAsPng(stream); // Save the image to the stream in PNG format
+                    stream.Position = 0;
 
-            snowProfiles.Add(snowProfile);
+                    grainTypeText = await _symbolRecognitionService.ClassifyImage(stream);
+                    if (!String.IsNullOrEmpty(grainTypeText)) break;
+                }
+            }
+                
+            var grainType = grainTypeText?.GetPrimaryGrainForm();
+            if (grainType?.Count() == 4)
+            {
+                grainType = grainType.Substring(0, 2) + grainType.Substring(2).ToLower();
+            }
+            //string grainTypeSec = null;
+            var grainTypeSec = grainTypeText?.GetSecondaryGrainForm();
+            if (grainTypeSec is not null && grainTypeSec.Count() == 4)
+            {
+                grainTypeSec = grainTypeSec.Substring(0, 2) + grainTypeSec.Substring(2).ToLower();
+            }
+            
+            
+            if (lwc is not null || grainSize is not null || hardness is not null)
+            {
+                var snowProfile = new SnowProfile.Layer
+                {
+                    Thickness = thickness > 0 ? thickness : null,
+                    LWC = lwc,
+                    Hardness = hardness,
+                    Grain = grainType,
+                    GrainSecondary = grainTypeSec,
+                    Size = grainSize > 0 && grainSize < 40 ? grainSize : null,
+                    SizeMax = grainSizeMax > 0 && grainSizeMax < 40 && grainSizeMax > grainSize
+                        ? grainSizeMax : null,
+                };
+
+                snowProfiles.Add(snowProfile);
+            }
         }
 
         return snowProfiles;

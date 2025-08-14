@@ -7,7 +7,7 @@ namespace SnowProfileScanner.Services
 {
     public class SymbolRecognitionService
     {
-        private string url, predictionKey, projectId;
+        private string url, predictionKey, projectId, iteration;
         private ILogger logger;
         private CustomVisionPredictionClient predictionClient;
 
@@ -16,6 +16,7 @@ namespace SnowProfileScanner.Services
             url = configuration["CustomVisionUrl"];
             predictionKey = configuration["CustomVisionPredictionKey"];
             projectId = configuration["CustomVisionProjectId"];
+            iteration = configuration["CustomVisionIteration"];
 
             this.logger = logger;
             predictionClient = AuthenticatePrediction(url, predictionKey);
@@ -23,7 +24,7 @@ namespace SnowProfileScanner.Services
 
         public async Task<string> ClassifyImage(MemoryStream image)
         {
-            var value = await predictionClient.ClassifyImageAsync(Guid.Parse(projectId), "Iteration5", image);
+            var value = await predictionClient.ClassifyImageAsync(Guid.Parse(projectId), iteration, image);
             if (value.Predictions[0].Probability > 0.30)
             {
                 return value.Predictions[0].TagName;
