@@ -1043,6 +1043,13 @@ $.extend( $.validator, {
 				element = this.findByName( element.name );
 			}
 
+			// Normalize to a single DOM element. This prevents accidental
+			// interpretation of arbitrary strings as HTML by jQuery.
+			element = this.clean( element );
+			if ( !element ) {
+				return element;
+			}
+
 			// Always apply ignore filter
 			return $( element ).not( this.settings.ignore )[ 0 ];
 		},
