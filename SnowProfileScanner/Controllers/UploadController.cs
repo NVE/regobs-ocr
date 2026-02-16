@@ -9,12 +9,21 @@ using System.Data;
 using SnowProfileScanner.Services.Caaml;
 using System.Text;
 using System.Net;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Formats;
+using System.IO;
+using System.Runtime.InteropServices;
+using SixLabors.ImageSharp.Advanced;
+using Microsoft.AspNetCore.WebUtilities;
 
 public class UploadController : Controller
 {
 
     private readonly IConfiguration _configuration;
     private readonly SnowProfileService _snowProfileService;
+    private readonly SymbolRecognitionService _symbolRecognitionService;
     private readonly HttpClient _httpClient;
     private const string RECAPTCHA_URL = "https://www.google.com/recaptcha/api/siteverify";
     private static readonly HashSet<string> VALID_LWC = ValidLwc();
@@ -26,11 +35,13 @@ public class UploadController : Controller
     public UploadController(
         IConfiguration configuration,
         SnowProfileService snowProfileService,
-        HttpClient httpClient
+        HttpClient httpClient,
+        SymbolRecognitionService symbolService
     ) {
         _httpClient = httpClient;
         _configuration = configuration;
         _snowProfileService = snowProfileService;
+        _symbolRecognitionService = symbolService;
     }
 
     public IActionResult Index()
@@ -67,10 +78,13 @@ public class UploadController : Controller
         AnalyzeResult result = operation.Value;
 
         var numberOfTables = result.Tables.Count();
+
+        Image<Rgba32> image = Image.Load<Rgba32>(memoryStream.ToArray());
+        image.Mutate(x => x.AutoOrient());
         var snowProfile = new SnowProfile
         {
             SnowTemp = numberOfTables > 1 ? DecodeSnowTemperature(result.Tables[1]) : new(),
-            Layers = numberOfTables > 0 ? DecodeSnowProfile(result.Tables[0]) : new(),
+            Layers = numberOfTables > 0 ? await DecodeSnowProfile(image, result.Tables[0]) : new(),
             AirTemp = numberOfTables > 1 ? DecodeAirTemperature(result.Tables[1]) : null,
         };
 
@@ -81,10 +95,29 @@ public class UploadController : Controller
         return View("Result", snowProfileEntity);
     }
 
-    
-    
 
-    private List<SnowProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
+
+	private Image<Rgba32> CropImageToBoundingBox(Image<Rgba32> image, IReadOnlyList<System.Drawing.PointF> boundingBox)
+	{
+		image.Mutate(x => x.AutoOrient());
+		var rectangle = ConvertBoundingBoxToRectangle(boundingBox);
+		return image.Clone(x => x.Crop(rectangle));
+	}
+
+
+	private Rectangle ConvertBoundingBoxToRectangle(IReadOnlyList<System.Drawing.PointF> boundingBox)
+	{
+
+		var topLeft = new Point((int)boundingBox.Select(p => p.X).Min(), (int)boundingBox.Select(p => p.Y).Min());
+		var bottomRight = new Point((int)boundingBox.Select(p => p.X).Max(), (int)boundingBox.Select(p => p.Y).Max());
+		var width = bottomRight.X - topLeft.X;
+		var height = bottomRight.Y - topLeft.Y;
+		return new Rectangle(topLeft.X, topLeft.Y, width, height);
+	}
+
+
+
+	private List<SnowProfile.SnowTemperature> DecodeSnowTemperature(DocumentTable tbl1)
     {
         var rows = tbl1.Cells
             .Where(cell => cell.RowIndex > 1 && !string.IsNullOrWhiteSpace(cell.Content))
@@ -117,7 +150,7 @@ public class UploadController : Controller
         return temps;
     }
 
-    private static List<SnowProfile.Layer> DecodeSnowProfile(DocumentTable tbl1)
+    private async Task<List<SnowProfile.Layer>> DecodeSnowProfile(Image<Rgba32> image, DocumentTable tbl1)
     {
         var snowProfiles = new List<SnowProfile.Layer>();
         var rowsCount = tbl1.Cells
@@ -157,7 +190,8 @@ public class UploadController : Controller
                 .OrderBy(vh => -vh.Length)
                 .FirstOrDefault();
 
-            var grainTypeText = ToString(row.SingleOrDefault(cell => cell.ColumnIndex == 3))
+            var grainCell = row.SingleOrDefault(cell => cell.ColumnIndex == 3);
+            var grainTypeText = ToString(grainCell)
                 .Replace("t", "f")
                 .Replace("I", "l")
                 .Replace("1", "l")
@@ -172,6 +206,16 @@ public class UploadController : Controller
                 .Where(vg => vg.Length <= grainTypeText.Length && vg.ToUpper() == grainTypeText[..vg.Length])
                 .OrderBy(vg => -vg.Length)
                 .FirstOrDefault();
+            if (grainTypeText == null || grainTypeText == string.Empty)
+            {
+                var polygon = grainCell.BoundingRegions[0].BoundingPolygon;
+                var croppedImage = CropImageToBoundingBox(image, polygon);
+                var stream = new MemoryStream();
+                croppedImage.SaveAsPng(stream); // Save the image to the stream in PNG format
+                stream.Position = 0;
+                grainTypeText = await _symbolRecognitionService.ClassifyImage(stream);
+            }
+                
             var grainType = grainTypeText?.GetPrimaryGrainForm();
             if (grainType?.Count() == 4)
             {
@@ -182,7 +226,7 @@ public class UploadController : Controller
             {
                 grainTypeSec = grainTypeSec.Substring(0, 2) + grainTypeSec.Substring(2).ToLower();
             }
-
+            
 
             var grainSizeText = row.SingleOrDefault(cell => cell.ColumnIndex == 4)?.Content ?? "";
             var grainSizeSplit = grainSizeText.Split(new Char[] { '-', '–', '—', '_' });
@@ -192,6 +236,7 @@ public class UploadController : Controller
             {
                 grainSizeMax = ToDouble(grainSizeSplit.Last());
             }
+            
 
             var snowProfile = new SnowProfile.Layer
             {
